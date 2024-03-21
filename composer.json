@@ -1,0 +1,22 @@
+{
+    "name": "cooldogedev/spectrum",
+    "type": "project",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "cooldogedev\\Spectrum\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Doge",
+            "email": "cooldogedev@gmail.com"
+        }
+    ],
+    "require": {
+        "ext-sockets": "*",
+        "ext-pmmpthread": "*",
+        "ext-libdeflate": "*",
+        "ext-zlib": "*"
+    }
+}
