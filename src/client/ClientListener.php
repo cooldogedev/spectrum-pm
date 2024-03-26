@@ -44,7 +44,6 @@ use pocketmine\utils\Binary;
 use pocketmine\utils\ServerException;
 use Socket;
 use function count;
-use function in_array;
 use function socket_accept;
 use function socket_bind;
 use function socket_close;
@@ -82,24 +81,24 @@ final class ClientListener
     private const SOCKET_READER_LENGTH = 1024 * 64;
 
     private const PACKETS_DECODE = [
-        ProxyPacketIds::LATENCY,
-        ProxyPacketIds::TRANSFER,
+        ProxyPacketIds::LATENCY => true,
+        ProxyPacketIds::TRANSFER => true,
 
-        ProtocolInfo::ADD_ACTOR_PACKET,
-        ProtocolInfo::ADD_ITEM_ACTOR_PACKET,
-        ProtocolInfo::ADD_PAINTING_PACKET,
-        ProtocolInfo::ADD_PLAYER_PACKET,
+        ProtocolInfo::ADD_ACTOR_PACKET => true,
+        ProtocolInfo::ADD_ITEM_ACTOR_PACKET => true,
+        ProtocolInfo::ADD_PAINTING_PACKET => true,
+        ProtocolInfo::ADD_PLAYER_PACKET => true,
 
-        ProtocolInfo::BOSS_EVENT_PACKET,
+        ProtocolInfo::BOSS_EVENT_PACKET => true,
 
-        ProtocolInfo::MOB_EFFECT_PACKET,
+        ProtocolInfo::MOB_EFFECT_PACKET => true,
 
-        ProtocolInfo::PLAYER_LIST_PACKET,
+        ProtocolInfo::PLAYER_LIST_PACKET => true,
 
-        ProtocolInfo::REMOVE_ACTOR_PACKET,
-        ProtocolInfo::REMOVE_OBJECTIVE_PACKET,
+        ProtocolInfo::REMOVE_ACTOR_PACKET => true,
+        ProtocolInfo::REMOVE_OBJECTIVE_PACKET => true,
 
-        ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET,
+        ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET => true,
     ];
 
     private readonly Socket $socket;
@@ -249,7 +248,7 @@ final class ClientListener
             }
 
             try {
-                $client->write($buffer, in_array($packet->pid(), ClientListener::PACKETS_DECODE));
+                $client->write($buffer, ClientListener::PACKETS_DECODE[$packet->pid()] ?? false);
             } catch (SocketException $exception) {
                 $this->disconnect($client, true);
                 if (!$exception instanceof SocketClosedException) {
