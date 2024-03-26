@@ -192,7 +192,7 @@ final class Client
             return;
         }
 
-        if ($error === SOCKET_EWOULDBLOCK || $error === SOCKET_EAGAIN) {
+        if ($error === SOCKET_EWOULDBLOCK || $error === 11) { // SOCKET_EAGAIN undefined on windows
             return;
         }
 
