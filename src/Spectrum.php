@@ -30,6 +30,7 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum;
 
+use cooldogedev\Spectrum\api\APIThread;
 use cooldogedev\Spectrum\network\ProxyInterface;
 use pocketmine\event\EventPriority;
 use pocketmine\event\server\NetworkInterfaceRegisterEvent;
@@ -38,10 +39,22 @@ use pocketmine\plugin\PluginBase;
 
 final class Spectrum extends PluginBase
 {
+    public readonly ?APIThread $api;
     public readonly ProxyInterface $interface;
 
     protected function onEnable(): void
     {
+        if ($this->getConfig()->getNested("api.enabled"))  {
+            $this->api = new APIThread(
+                logger: $this->getServer()->getLogger(),
+                address: $this->getConfig()->getNested("api.address"),
+                port: $this->getConfig()->getNested("api.port"),
+            );
+            $this->api->start();
+        } else {
+            $this->api = null;
+        }
+
         $this->interface = new ProxyInterface($this);
 
         $server = $this->getServer();
