@@ -34,14 +34,17 @@ use cooldogedev\Spectrum\client\exception\SocketClosedException;
 use cooldogedev\Spectrum\client\exception\SocketException;
 use cooldogedev\Spectrum\client\packet\DisconnectPacket;
 use cooldogedev\Spectrum\client\packet\LoginPacket;
+use cooldogedev\Spectrum\client\packet\ProxyPacketIds;
 use cooldogedev\Spectrum\client\packet\ProxyPacketPool;
 use cooldogedev\Spectrum\client\packet\ProxySerializer;
 use pmmp\thread\ThreadSafeArray;
+use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use pocketmine\utils\ServerException;
 use Socket;
 use function count;
+use function in_array;
 use function socket_accept;
 use function socket_bind;
 use function socket_close;
@@ -77,6 +80,27 @@ final class ClientListener
 
     private const SOCKET_BUFFER = 1024 * 1024 * 8;
     private const SOCKET_READER_LENGTH = 1024 * 64;
+
+    private const PACKETS_DECODE = [
+        ProxyPacketIds::LATENCY,
+        ProxyPacketIds::TRANSFER,
+
+        ProtocolInfo::ADD_ACTOR_PACKET,
+        ProtocolInfo::ADD_ITEM_ACTOR_PACKET,
+        ProtocolInfo::ADD_PAINTING_PACKET,
+        ProtocolInfo::ADD_PLAYER_PACKET,
+
+        ProtocolInfo::BOSS_EVENT_PACKET,
+
+        ProtocolInfo::MOB_EFFECT_PACKET,
+
+        ProtocolInfo::PLAYER_LIST_PACKET,
+
+        ProtocolInfo::REMOVE_ACTOR_PACKET,
+        ProtocolInfo::REMOVE_OBJECTIVE_PACKET,
+
+        ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET,
+    ];
 
     private readonly Socket $socket;
 
@@ -225,7 +249,7 @@ final class ClientListener
             }
 
             try {
-                $client->write($buffer);
+                $client->write($buffer, in_array($packet->pid(), ClientListener::PACKETS_DECODE));
             } catch (SocketException $exception) {
                 $this->disconnect($client, true);
                 if (!$exception instanceof SocketClosedException) {

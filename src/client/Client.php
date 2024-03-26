@@ -63,6 +63,8 @@ final class Client
 
     private const PACKET_LENGTH_SIZE = 4;
     private const PACKET_FRAME_SIZE = 1024 * 64;
+    private const PACKET_DECODE_NEEDED = 0x00;
+    private const PACKET_DECODE_NOT_NEEDED = 0x01;
 
     private const FLUSH_THRESHOLD = 0.05;
     private const FLUSH_AMOUNT = 5;
@@ -122,9 +124,9 @@ final class Client
         return $buffer !== false ? $buffer : null;
     }
 
-    public function write(string $buffer): void
+    public function write(string $buffer, bool $decodeNeeded): void
     {
-        $buffer = libdeflate_deflate_compress($buffer, 9);
+        $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
         $buffer = Binary::writeInt(strlen($buffer)) . $buffer;
 
         if (strlen($buffer) <= Client::PACKET_FRAME_SIZE) {
