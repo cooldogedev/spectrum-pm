@@ -50,7 +50,6 @@ use function libdeflate_deflate_compress;
 use function zlib_decode;
 use function microtime;
 use const MSG_DONTWAIT;
-use const SOCKET_EAGAIN;
 use const SOCKET_EWOULDBLOCK;
 use const SOCKET_ECONNRESET;
 use const SOL_SOCKET;
@@ -192,7 +191,7 @@ final class Client
             return;
         }
 
-        if ($error === SOCKET_EWOULDBLOCK || $error === 11) { // SOCKET_EAGAIN undefined on windows
+        if ($error === SOCKET_EWOULDBLOCK || $error === 11) {
             return;
         }
 
