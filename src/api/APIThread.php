@@ -38,8 +38,10 @@ use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\thread\Thread;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryStream;
+use Socket;
 use function gc_enable;
 use function ini_set;
+use function is_null;
 use function socket_close;
 use function socket_connect;
 use function socket_create;
@@ -71,6 +73,19 @@ final class APIThread extends Thread
         return parent::start($options);
     }
 
+
+	private function connect(): ?Socket
+	{
+		$socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+		if (!@socket_connect($socket, $this->address, $this->port)) {
+			$this->logger->error("Failed to connect to API due to: " . socket_strerror(socket_last_error()));
+			return null;
+		}
+
+		socket_set_nonblock($socket);
+		return $socket;
+	}
+
     protected function onRun(): void
     {
         gc_enable();
@@ -81,17 +96,15 @@ final class APIThread extends Thread
 
         GlobalLogger::set($this->logger);
 
-        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        if (!@socket_connect($socket, $this->address, $this->port)) {
-            $this->logger->error("Failed to connect to API due to: " . socket_strerror(socket_last_error()));
-            return;
-        }
-
-        socket_set_nonblock($socket);
+        $socket = $this->connect();
 
         $this->running = true;
         $this->logger->info("Successfully connected to the API");
         while ($this->running) {
+			if(is_null($socket)){
+				$socket = $this->connect();
+				continue;
+			}
             $this->synchronized(function (): void {
                 if ($this->running && $this->buffer->count() === 0) {
                     $this->wait();
@@ -105,9 +118,9 @@ final class APIThread extends Thread
 
             $bytes = @socket_write($socket, Binary::writeInt(strlen($out)) . $out);
             if ($bytes === false) {
-                $this->running = false;
+				$this->buffer[] = $out;
+				$socket = $this->connect();
                 $this->logger->error("Failed to write to API due to: " . socket_strerror(socket_last_error()));
-                break;
             }
         }
 
