@@ -35,21 +35,18 @@ use function json_decode;
 use function json_encode;
 use const JSON_INVALID_UTF8_IGNORE;
 
-final class ConnectPacket extends ProxyPacket
+final class ConnectionRequestPacket extends ProxyPacket
 {
-    public const NETWORK_ID = ProxyPacketIds::CONNECT;
+    public const NETWORK_ID = ProxyPacketIds::CONNECTION_REQUEST;
 
     public string $address;
-    public int $entityId;
-
     public array $clientData;
     public array $identityData;
 
-    public static function create(string $address, int $entityId, array $clientData, array $identityData): ConnectPacket
+    public static function create(string $address, array $clientData, array $identityData): ConnectionRequestPacket
     {
-        $packet = new ConnectPacket();
+        $packet = new ConnectionRequestPacket();
         $packet->address = $address;
-        $packet->entityId = $entityId;
         $packet->clientData = $clientData;
         $packet->identityData = $identityData;
         return $packet;
@@ -58,7 +55,6 @@ final class ConnectPacket extends ProxyPacket
     public function decodePayload(PacketSerializer $in): void
     {
         $this->address = $in->getString();
-        $this->entityId = $in->getVarLong();
         $this->clientData = json_decode($in->getString(), true, JSON_INVALID_UTF8_IGNORE);
         $this->identityData = json_decode($in->getString(), true, JSON_INVALID_UTF8_IGNORE);
     }
@@ -66,7 +62,6 @@ final class ConnectPacket extends ProxyPacket
     public function encodePayload(PacketSerializer $out): void
     {
         $out->putString($this->address);
-        $out->putVarLong($this->entityId);
         $out->putString(json_encode($this->clientData, JSON_INVALID_UTF8_IGNORE));
         $out->putString(json_encode($this->identityData, JSON_INVALID_UTF8_IGNORE));
     }

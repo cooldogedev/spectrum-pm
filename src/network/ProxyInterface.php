@@ -32,7 +32,8 @@ namespace cooldogedev\Spectrum\network;
 
 use Closure;
 use cooldogedev\Spectrum\client\ClientThread;
-use cooldogedev\Spectrum\client\packet\ConnectPacket;
+use cooldogedev\Spectrum\client\packet\ConnectionRequestPacket;
+use cooldogedev\Spectrum\client\packet\ConnectionResponsePacket;
 use cooldogedev\Spectrum\client\packet\DisconnectPacket;
 use cooldogedev\Spectrum\client\packet\LatencyPacket;
 use cooldogedev\Spectrum\client\packet\LoginPacket;
@@ -64,6 +65,7 @@ use pocketmine\utils\Utils;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
 use Socket;
+use function crc32;
 use function floor;
 use function microtime;
 use function socket_close;
@@ -160,7 +162,7 @@ final class ProxyInterface implements NetworkInterface
 
             match (true) {
                 $packet instanceof LoginPacket => $this->login($identifier, $packet->address, $packet->port),
-                $packet instanceof ConnectPacket && $session !== null => $this->connect($session, $packet->address, $packet->entityId, $packet->clientData, $packet->identityData),
+                $packet instanceof ConnectionRequestPacket && $session !== null => $this->connect($session, $identifier, $packet->address, $packet->clientData, $packet->identityData),
                 $packet instanceof LatencyPacket && $session !== null => $this->latency($session, $identifier, $packet->latency, $packet->timestamp),
                 $packet instanceof DisconnectPacket => $this->disconnect($identifier, false),
                 default => null,
@@ -192,7 +194,7 @@ final class ProxyInterface implements NetworkInterface
         $this->sessions[$identifier] = $session;
     }
 
-    private function connect(NetworkSession $session, string $address, int $entityId, array $clientData, array $identityData): void
+    private function connect(NetworkSession $session, int $identifier, string $address, array $clientData, array $identityData): void
     {
         $server = $this->plugin->getServer();
 
@@ -200,10 +202,12 @@ final class ProxyInterface implements NetworkInterface
         $identityData = JsonUtils::map($identityData, new AuthenticationData());
 
         if ($clientData === null || $identityData === null) {
-            $session->disconnect("Invalid client data");
+            $session->disconnectWithError(KnownTranslationFactory::pocketmine_disconnect_error_authentication());
             return;
         }
 
+        $entityId = crc32($identityData->XUID) & 0x7FFFFFFFFFFFFFFF;
+        $this->sendOutgoing($identifier, ConnectionResponsePacket::create($entityId, $entityId));
         if (!Player::isValidUserName($identityData->displayName)) {
             $session->disconnectWithError(KnownTranslationFactory::disconnectionScreen_invalidName());
             return;
@@ -279,7 +283,7 @@ final class ProxyInterface implements NetworkInterface
                         $onPlayerCreated($this);
                     }, $player, $player)->call($player);
                 },
-                fn () => $onFail("Failed to create player", KnownTranslationFactory::pocketmine_disconnect_error_internal())
+                fn () => $onFail("Failed to create player")
             );
         }, $session, $session)->call($session);
     }
@@ -322,12 +326,6 @@ final class ProxyInterface implements NetworkInterface
         $this->thread->out[] = $buffer;
         $this->sentBytes += strlen($buffer);
         @socket_write($this->writer, "\00");
-    }
-
-    public function getIdentifier(NetworkSession $session): ?int
-    {
-        $identifier = array_search($session, $this->sessions, true);
-        return $identifier !== false ? $identifier : null;
     }
 
     public function start(): void

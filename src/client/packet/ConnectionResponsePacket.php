@@ -26,17 +26,34 @@
  * @auto-license
  */
 
-declare(strict_types=1);
-
 namespace cooldogedev\Spectrum\client\packet;
 
-interface ProxyPacketIds
-{
-    public const CONNECTION_REQUEST = 500;
-    public const CONNECTION_RESPONSE = 501;
-    public const LATENCY = 502;
-    public const TRANSFER = 503;
+use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 
-    public const LOGIN = 504;
-    public const DISCONNECT = 505;
+final class ConnectionResponsePacket extends ProxyPacket
+{
+    public const NETWORK_ID = ProxyPacketIds::CONNECTION_RESPONSE;
+
+    public int $runtimeId;
+    public int $uniqueId;
+
+    public static function create(int $runtimeId, int $uniqueId): ConnectionResponsePacket
+    {
+        $packet = new ConnectionResponsePacket();
+        $packet->runtimeId = $runtimeId;
+        $packet->uniqueId = $uniqueId;
+        return $packet;
+    }
+
+    public function decodePayload(PacketSerializer $in): void
+    {
+        $this->runtimeId = $in->getUnsignedVarLong();
+        $this->uniqueId = $in->getVarLong();
+    }
+
+    public function encodePayload(PacketSerializer $out): void
+    {
+        $out->putUnsignedVarLong($this->runtimeId);
+        $out->putVarLong($this->uniqueId);
+    }
 }

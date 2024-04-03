@@ -40,9 +40,10 @@ final class ProxyPacketPool extends PMPacketPool
     {
         parent::__construct();
 
-        $this->pool->setSize($this->pool->getSize() + 5);
+        $this->pool->setSize($this->pool->getSize() + 6);
 
-        $this->registerPacket(new ConnectPacket());
+        $this->registerPacket(new ConnectionRequestPacket());
+        $this->registerPacket(new ConnectionResponsePacket());
         $this->registerPacket(new DisconnectPacket());
         $this->registerPacket(new LatencyPacket());
         $this->registerPacket(new LoginPacket());

@@ -62,7 +62,7 @@ final class Spectrum extends PluginBase
         if ($this->getConfig()->get("disable-raklib")) {
             $server->getPluginManager()->registerEvent(
                 event: NetworkInterfaceRegisterEvent::class,
-                handler: function (NetworkInterfaceRegisterEvent $event): void {
+                handler: static function (NetworkInterfaceRegisterEvent $event): void {
                     if ($event->getInterface() instanceof RakLibInterface) {
                         $event->cancel();
                     }
