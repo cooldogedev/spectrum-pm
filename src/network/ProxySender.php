@@ -41,7 +41,7 @@ final class ProxySender implements PacketSender
 
     public function __construct(private readonly ProxyInterface $interface, private readonly int $identifier) {}
 
-    public function send(string $payload, bool $immediate): void
+    public function send(string $payload, bool $immediate, ?int $receiptId): void
     {
         if ($this->closed) {
             return;
@@ -49,7 +49,7 @@ final class ProxySender implements PacketSender
 
         $stream = new BinaryStream(substr($payload, 1));
         foreach (PacketBatch::decodeRaw($stream) as $packet) {
-            $this->interface->sendOutgoingRaw($this->identifier, $packet);
+            $this->interface->sendOutgoingRaw($this->identifier, $packet, $receiptId);
         }
     }
 

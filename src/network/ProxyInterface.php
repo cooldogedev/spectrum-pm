@@ -207,7 +207,7 @@ final class ProxyInterface implements NetworkInterface
         }
 
         $entityId = crc32($identityData->XUID) & 0x7FFFFFFFFFFFFFFF;
-        $this->sendOutgoing($identifier, ConnectionResponsePacket::create($entityId, $entityId));
+        $this->sendOutgoing($identifier, ConnectionResponsePacket::create($entityId, $entityId), null);
         if (!Player::isValidUserName($identityData->displayName)) {
             $session->disconnectWithError(KnownTranslationFactory::disconnectionScreen_invalidName());
             return;
@@ -294,7 +294,7 @@ final class ProxyInterface implements NetworkInterface
         $latency += $now - $timestamp;
 
         Closure::bind(fn() => $this->ping = $latency, $session, $session)->call($session);
-        $this->sendOutgoing($identifier, LatencyPacket::create($latency, $now));
+        $this->sendOutgoing($identifier, LatencyPacket::create($latency, $now), null);
     }
 
     public  function disconnect(int $identifier, bool $notifyThread): void
@@ -308,24 +308,31 @@ final class ProxyInterface implements NetworkInterface
         $session->onClientDisconnect("");
 
         if ($notifyThread) {
-            $this->sendOutgoing($identifier, DisconnectPacket::create());
+            $this->sendOutgoing($identifier, DisconnectPacket::create(), null);
         }
     }
 
-    public function sendOutgoing(int|NetworkSession $identifier, ProxyPacket $packet): void
+    public function sendOutgoing(int $identifier, ProxyPacket $packet, ?int $receiptId): void
     {
         $buffer = ProxySerializer::encode($identifier, $packet);
         $this->thread->out[] = $buffer;
         $this->sentBytes += strlen($buffer);
         socket_write($this->writer, "\00");
+
+        if ($receiptId !== null && isset($this->sessions[$identifier])) {
+            $this->sessions[$identifier]->handleAckReceipt($receiptId);
+        }
     }
 
-    public function sendOutgoingRaw(int $identifier, string $packet): void
+    public function sendOutgoingRaw(int $identifier, string $packet, ?int $receiptId): void
     {
         $buffer = ProxySerializer::encodeRaw($identifier, $packet);
         $this->thread->out[] = $buffer;
         $this->sentBytes += strlen($buffer);
         @socket_write($this->writer, "\00");
+        if ($receiptId !== null && isset($this->sessions[$identifier])) {
+            $this->sessions[$identifier]->handleAckReceipt($receiptId);
+        }
     }
 
     public function start(): void
