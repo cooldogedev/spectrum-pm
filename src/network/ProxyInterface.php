@@ -162,7 +162,7 @@ final class ProxyInterface implements NetworkInterface
 
             match (true) {
                 $packet instanceof LoginPacket => $this->login($identifier, $packet->address, $packet->port),
-                $packet instanceof ConnectionRequestPacket && $session !== null => $this->connect($session, $identifier, $packet->address, $packet->clientData, $packet->identityData),
+                $packet instanceof ConnectionRequestPacket && $session !== null => $this->connect($session, $identifier, $packet->address, $packet->token, $packet->clientData, $packet->identityData),
                 $packet instanceof LatencyPacket && $session !== null => $this->latency($session, $identifier, $packet->latency, $packet->timestamp),
                 $packet instanceof DisconnectPacket => $this->disconnect($identifier, false),
                 default => null,
@@ -194,7 +194,7 @@ final class ProxyInterface implements NetworkInterface
         $this->sessions[$identifier] = $session;
     }
 
-    private function connect(NetworkSession $session, int $identifier, string $address, array $clientData, array $identityData): void
+    private function connect(NetworkSession $session, int $identifier, string $address, string $token, array $clientData, array $identityData): void
     {
         $server = $this->plugin->getServer();
 
@@ -202,6 +202,11 @@ final class ProxyInterface implements NetworkInterface
         $identityData = JsonUtils::map($identityData, new AuthenticationData());
 
         if ($clientData === null || $identityData === null) {
+            $session->disconnectWithError(KnownTranslationFactory::pocketmine_disconnect_error_authentication());
+            return;
+        }
+
+        if ($this->plugin->authenticator !== null && !($this->plugin->authenticator)($identityData, $token)) {
             $session->disconnectWithError(KnownTranslationFactory::pocketmine_disconnect_error_authentication());
             return;
         }

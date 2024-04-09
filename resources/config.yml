@@ -1,4 +1,5 @@
 ---
+secret: ""
 disable-raklib: true
 api:
   enabled: false

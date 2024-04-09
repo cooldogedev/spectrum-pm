@@ -30,16 +30,24 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum;
 
+use Closure;
 use cooldogedev\Spectrum\api\APIThread;
 use cooldogedev\Spectrum\network\ProxyInterface;
 use pocketmine\event\EventPriority;
 use pocketmine\event\server\NetworkInterfaceRegisterEvent;
+use pocketmine\network\mcpe\protocol\types\login\AuthenticationData;
 use pocketmine\network\mcpe\raklib\RakLibInterface;
 use pocketmine\plugin\PluginBase;
 
 final class Spectrum extends PluginBase
 {
     public readonly ?APIThread $api;
+
+    /**
+     * @var Closure(AuthenticationData $authenticationData, string $token):bool | null
+     */
+    public ?Closure $authenticator;
+
     public readonly ProxyInterface $interface;
 
     protected function onEnable(): void
@@ -55,6 +63,7 @@ final class Spectrum extends PluginBase
             $this->api = null;
         }
 
+        $this->authenticator = fn (AuthenticationData $authenticationData, string $token): bool => $token === $this->getConfig()->get("secret");
         $this->interface = new ProxyInterface($this);
 
         $server = $this->getServer();
