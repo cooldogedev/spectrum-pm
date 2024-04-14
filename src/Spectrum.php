@@ -55,6 +55,7 @@ final class Spectrum extends PluginBase
         if ($this->getConfig()->getNested("api.enabled"))  {
             $this->api = new APIThread(
                 logger: $this->getServer()->getLogger(),
+                token: $this->getConfig()->getNested("api.token"),
                 address: $this->getConfig()->getNested("api.address"),
                 port: $this->getConfig()->getNested("api.port"),
             );

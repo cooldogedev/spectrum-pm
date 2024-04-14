@@ -32,32 +32,30 @@ namespace cooldogedev\Spectrum\api\packet;
 
 use pocketmine\utils\BinaryStream;
 
-final class TransferPacket extends Packet
+final class ConnectionResponsePacket extends Packet
 {
-    public const PACKET_ID = PacketIds::TRANSFER;
+    public const PACKET_ID = PacketIds::CONNECTION_RESPONSE;
 
-    public string $address;
-    public string $username;
+    public const RESPONSE_SUCCESS = 0;
+    public const RESPONSE_UNAUTHORIZED = 1;
+    public const RESPONSE_FAIL = 2;
 
-    public static function create(string $address, string $username): TransferPacket
+    public int $response;
+
+    public static function create(int $response): ConnectionResponsePacket
     {
-        $pk = new TransferPacket();
-        $pk->address = $address;
-        $pk->username = $username;
+        $pk = new ConnectionResponsePacket();
+        $pk->response = $response;
         return $pk;
     }
 
     protected function decodePayload(BinaryStream $stream): void
     {
-        $this->address = $stream->get($stream->getLInt());
-        $this->username = $stream->get($stream->getLInt());
+        $this->response = $stream->getByte();
     }
 
     protected function encodePayload(BinaryStream $stream): void
     {
-        $stream->putLInt(strlen($this->address));
-        $stream->put($this->address);
-        $stream->putLInt(strlen($this->username));
-        $stream->put($this->username);
+        $stream->putByte($this->response);
     }
 }

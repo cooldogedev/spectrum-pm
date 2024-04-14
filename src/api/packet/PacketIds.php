@@ -32,6 +32,8 @@ namespace cooldogedev\Spectrum\api\packet;
 
 final class PacketIds
 {
-    public const KICK = 0;
-    public const TRANSFER = 1;
+    public const CONNECTION_REQUEST = 0;
+    public const CONNECTION_RESPONSE = 1;
+    public const KICK = 2;
+    public const TRANSFER = 3;
 }

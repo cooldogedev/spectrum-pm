@@ -47,6 +47,12 @@ final class KickPacket extends Packet
         return $pk;
     }
 
+    protected function decodePayload(BinaryStream $stream): void
+    {
+        $this->reason = $stream->get($stream->getLInt());
+        $this->username = $stream->get($stream->getLInt());
+    }
+
     protected function encodePayload(BinaryStream $stream): void
     {
         $stream->putLInt(strlen($this->reason));

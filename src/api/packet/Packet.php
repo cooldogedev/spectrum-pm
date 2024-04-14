@@ -36,7 +36,14 @@ abstract class Packet
 {
     public const PACKET_ID = -1;
 
+    abstract protected function decodePayload(BinaryStream $stream): void;
     abstract protected function encodePayload(BinaryStream $stream): void;
+
+    final public function decode(BinaryStream $stream): void
+    {
+        $stream->getLInt();
+        $this->decodePayload($stream);
+    }
 
     final public function encode(BinaryStream $stream): void
     {

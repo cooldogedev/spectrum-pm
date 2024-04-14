@@ -3,6 +3,7 @@ secret: ""
 disable-raklib: true
 api:
   enabled: false
+  token: ""
   address: 127.0.0.1
-  port: 19134
+  port: 19132
 ...
