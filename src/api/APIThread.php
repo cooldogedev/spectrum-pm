@@ -35,6 +35,7 @@ use cooldogedev\Spectrum\api\packet\ConnectionResponsePacket;
 use cooldogedev\Spectrum\api\packet\Packet;
 use GlobalLogger;
 use pmmp\thread\Thread as NativeThread;
+use pmmp\thread\ThreadSafeArray;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\thread\Thread;
 use pocketmine\utils\Binary;
@@ -62,15 +63,19 @@ final class APIThread extends Thread
 {
     private const PACKET_LENGTH_SIZE = 4;
 
-    public bool $running = false;
-    private ?Socket $socket;
+    private Socket $socket;
+    private ThreadSafeArray $buffer;
+
+    private bool $running = false;
 
     public function __construct(
         private readonly ThreadSafeLogger $logger,
         private readonly string           $token,
         private readonly string           $address,
         private readonly int              $port,
-    ) {}
+    ) {
+        $this->buffer = new ThreadSafeArray();
+    }
 
     public function start(int $options = NativeThread::INHERIT_NONE): bool
     {
@@ -92,6 +97,7 @@ final class APIThread extends Thread
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         $this->connect();
         $this->write(ConnectionRequestPacket::create($this->token));
+        $this->flush();
 
         $connectionResponseBytes = $this->read();
         if ($connectionResponseBytes === null) {
@@ -112,14 +118,24 @@ final class APIThread extends Thread
         }
 
         $this->logger->info("Successfully connected to the API");
+        while ($this->running) {
+            $this->synchronized(function (): void {
+                if ($this->running && $this->buffer->count() === 0) {
+                    $this->wait();
+                }
+            });
+
+            $this->flush();
+        }
+
+        @socket_close($this->socket);
+        $this->logger->debug("Disconnected from API");
     }
 
     public function quit(): void
     {
         $this->synchronized(function (): void {
             $this->running = false;
-            socket_close($this->socket);
-            $this->logger->debug("Disconnected from API");
             $this->notify();
         });
         parent::quit();
@@ -133,11 +149,10 @@ final class APIThread extends Thread
 
         $stream = new BinaryStream();
         $packet->encode($stream);
-        $buffer = $stream->getBuffer();
-        if (@socket_write($this->socket, Binary::writeInt(strlen($buffer)) . $buffer) === false) {
-            $this->connect();
-            $this->write($packet);
-        }
+        $this->synchronized(function () use ($stream): void {
+            $this->buffer[] = $stream->getBuffer();
+            $this->notify();
+        });
     }
 
     public function read(): ?string
@@ -158,6 +173,17 @@ final class APIThread extends Thread
             return null;
         }
         return $buffer;
+    }
+
+    private function flush(): void
+    {
+        while ($this->running && ($payload = $this->buffer->shift()) !== null) {
+            if (@socket_write($this->socket, Binary::writeInt(strlen($payload)) . $payload) === false) {
+                $this->buffer[] = $payload;
+                $this->connect();
+                $this->flush();
+            }
+        }
     }
 
     private function connect(): void
