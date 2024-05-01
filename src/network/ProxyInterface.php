@@ -66,6 +66,7 @@ use Ramsey\Uuid\Uuid;
 use RuntimeException;
 use Socket;
 use function crc32;
+use function explode;
 use function floor;
 use function microtime;
 use function socket_close;
@@ -196,6 +197,7 @@ final class ProxyInterface implements NetworkInterface
 
     private function connect(NetworkSession $session, int $identifier, string $address, string $token, array $clientData, array $identityData): void
     {
+        [$ip, $port] = explode(":", $address);
         $server = $this->plugin->getServer();
 
         $clientData = JsonUtils::map($clientData, new ClientData());
@@ -235,8 +237,9 @@ final class ProxyInterface implements NetworkInterface
             extraData: (array)$clientData,
         );
 
-        Closure::bind(function () use ($address, $playerInfo): void {
-            $this->ip = $address;
+        Closure::bind(function () use ($ip, $port, $playerInfo): void {
+            $this->ip = $ip;
+            $this->port = (int)$port;
             $this->info = $playerInfo;
             $this->logger->setPrefix($this->getLogPrefix());
             $this->manager->markLoginReceived($this);
