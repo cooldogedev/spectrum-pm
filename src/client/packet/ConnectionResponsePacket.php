@@ -26,6 +26,8 @@
  * @auto-license
  */
 
+declare(strict_types=1);
+
 namespace cooldogedev\Spectrum\client\packet;
 
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;

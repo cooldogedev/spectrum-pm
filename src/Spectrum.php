@@ -32,21 +32,46 @@ namespace cooldogedev\Spectrum;
 
 use Closure;
 use cooldogedev\Spectrum\api\APIThread;
+use cooldogedev\Spectrum\client\packet\ProxyPacketIds;
 use cooldogedev\Spectrum\network\ProxyInterface;
+use pmmp\thread\ThreadSafeArray;
 use pocketmine\event\EventPriority;
 use pocketmine\event\server\NetworkInterfaceRegisterEvent;
+use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\network\mcpe\protocol\types\login\AuthenticationData;
 use pocketmine\network\mcpe\raklib\RakLibInterface;
 use pocketmine\plugin\PluginBase;
 
 final class Spectrum extends PluginBase
 {
+    private const PACKET_DECODE = [
+        ProxyPacketIds::LATENCY => true,
+        ProxyPacketIds::TRANSFER => true,
+
+        ProtocolInfo::ADD_ACTOR_PACKET => true,
+        ProtocolInfo::ADD_ITEM_ACTOR_PACKET => true,
+        ProtocolInfo::ADD_PAINTING_PACKET => true,
+        ProtocolInfo::ADD_PLAYER_PACKET => true,
+
+        ProtocolInfo::BOSS_EVENT_PACKET => true,
+
+        ProtocolInfo::MOB_EFFECT_PACKET => true,
+
+        ProtocolInfo::PLAYER_LIST_PACKET => true,
+
+        ProtocolInfo::REMOVE_ACTOR_PACKET => true,
+        ProtocolInfo::REMOVE_OBJECTIVE_PACKET => true,
+
+        ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET => true,
+    ];
+
     public readonly ?APIThread $api;
 
     /**
      * @var Closure(AuthenticationData $authenticationData, string $token):bool | null
      */
     public ?Closure $authenticator;
+    public ThreadSafeArray $decode;
 
     public readonly ProxyInterface $interface;
 
@@ -65,7 +90,12 @@ final class Spectrum extends PluginBase
         }
 
         $this->authenticator = fn (AuthenticationData $authenticationData, string $token): bool => $token === $this->getConfig()->get("secret");
-        $this->interface = new ProxyInterface($this);
+        $this->decode = new ThreadSafeArray();
+        $this->interface = new ProxyInterface($this, $this->decode);
+
+        foreach (Spectrum::PACKET_DECODE as $id => $bool) {
+            $this->decode[$id] = $bool;
+        }
 
         $server = $this->getServer();
         $server->getNetwork()->registerInterface($this->interface);

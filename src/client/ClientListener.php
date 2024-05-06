@@ -80,27 +80,6 @@ final class ClientListener
     private const SOCKET_BUFFER = 1024 * 1024 * 8;
     private const SOCKET_READER_LENGTH = 1024 * 64;
 
-    private const PACKETS_DECODE = [
-        ProxyPacketIds::LATENCY => true,
-        ProxyPacketIds::TRANSFER => true,
-
-        ProtocolInfo::ADD_ACTOR_PACKET => true,
-        ProtocolInfo::ADD_ITEM_ACTOR_PACKET => true,
-        ProtocolInfo::ADD_PAINTING_PACKET => true,
-        ProtocolInfo::ADD_PLAYER_PACKET => true,
-
-        ProtocolInfo::BOSS_EVENT_PACKET => true,
-
-        ProtocolInfo::MOB_EFFECT_PACKET => true,
-
-        ProtocolInfo::PLAYER_LIST_PACKET => true,
-
-        ProtocolInfo::REMOVE_ACTOR_PACKET => true,
-        ProtocolInfo::REMOVE_OBJECTIVE_PACKET => true,
-
-        ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET => true,
-    ];
-
     private readonly Socket $socket;
 
     /**
@@ -112,6 +91,7 @@ final class ClientListener
 
     public function __construct(
         private readonly Socket           $reader,
+        private readonly ThreadSafeArray  $decode,
         private readonly ThreadSafeLogger $logger,
 
         private ThreadSafeArray           $in,
@@ -248,7 +228,7 @@ final class ClientListener
             }
 
             try {
-                $client->write($buffer, ClientListener::PACKETS_DECODE[$packet->pid()] ?? false);
+                $client->write($buffer, $this->decode[$packet->pid()] ?? false);
             } catch (SocketException $exception) {
                 $this->disconnect($client, true);
                 if (!$exception instanceof SocketClosedException) {

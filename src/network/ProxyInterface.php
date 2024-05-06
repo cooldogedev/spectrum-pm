@@ -97,7 +97,7 @@ final class ProxyInterface implements NetworkInterface
      */
     private array $sessions = [];
 
-    public function __construct(public readonly Spectrum $plugin)
+    public function __construct(private readonly Spectrum $plugin, private readonly ThreadSafeArray $decode)
     {
         $this->in = new ThreadSafeArray();
         $this->out = new ThreadSafeArray();
@@ -117,6 +117,7 @@ final class ProxyInterface implements NetworkInterface
             in: $this->in,
             out: $this->out,
 
+            decode: $this->decode,
             logger: $server->getLogger(),
             port: $server->getPort(),
         );

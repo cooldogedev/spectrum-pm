@@ -44,12 +44,13 @@ final class ClientThread extends Thread
     public bool $running = false;
 
     public function __construct(
-        private readonly Socket $reader,
+        private readonly Socket              $reader,
         private readonly SleeperHandlerEntry $sleeperHandlerEntry,
 
         public ThreadSafeArray               $in,
         public ThreadSafeArray               $out,
 
+        private readonly ThreadSafeArray     $decode,
         private readonly ThreadSafeLogger    $logger,
         private readonly int                 $port,
     ) {}
@@ -66,8 +67,10 @@ final class ClientThread extends Thread
 
         $this->running = true;
 
+        $notifier = $this->sleeperHandlerEntry->createNotifier();
         $listener = new ClientListener(
             reader: $this->reader,
+            decode: $this->decode,
             logger: $this->logger,
 
             in: $this->in,
@@ -77,11 +80,7 @@ final class ClientThread extends Thread
         );
 
         $listener->start();
-
-        $notifier = $this->sleeperHandlerEntry->createNotifier();
-
         $this->logger->info("Listening on port " . $this->port);
-
         while ($this->running) {
             $listener->tick();
             if ($this->in->count() > 0) {
@@ -99,7 +98,6 @@ final class ClientThread extends Thread
             $this->running = false;
             $this->notify();
         });
-
         parent::quit();
     }
 }
