@@ -30,9 +30,10 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
+use pocketmine\network\mcpe\protocol\ClientboundPacket;
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 
-final class TransferPacket extends ProxyPacket
+final class TransferPacket extends ProxyPacket implements ClientboundPacket
 {
     public const NETWORK_ID = ProxyPacketIds::TRANSFER;
 
