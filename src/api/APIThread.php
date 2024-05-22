@@ -33,6 +33,7 @@ namespace cooldogedev\Spectrum\api;
 use cooldogedev\Spectrum\api\packet\ConnectionRequestPacket;
 use cooldogedev\Spectrum\api\packet\ConnectionResponsePacket;
 use cooldogedev\Spectrum\api\packet\Packet;
+use cooldogedev\Spectrum\api\packet\PacketIds;
 use GlobalLogger;
 use pmmp\thread\Thread as NativeThread;
 use pmmp\thread\ThreadSafeArray;
@@ -102,6 +103,17 @@ final class APIThread extends Thread
         $connectionResponseBytes = $this->read();
         if ($connectionResponseBytes === null) {
             $this->logger->error("Failed to read connection response");
+            return;
+        }
+
+        try {
+            $connectionResponseId = Binary::readLInt(substr($connectionResponseBytes, 0, 4));
+            if ($connectionResponseId !== PacketIds::CONNECTION_RESPONSE) {
+                $this->logger->error("Expected connection response, got " . $connectionResponseId);
+                return;
+            }
+        } catch (BinaryDataException) {
+            $this->logger->error("Failed to decode connection response packet id");
             return;
         }
 
