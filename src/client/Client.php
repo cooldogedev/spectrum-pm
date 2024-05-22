@@ -46,9 +46,9 @@ use function socket_last_error;
 use function socket_strerror;
 use function socket_close;
 use function strlen;
+use function str_split;
 use function libdeflate_deflate_compress;
 use function zlib_decode;
-use function microtime;
 use const MSG_DONTWAIT;
 use const SOCKET_EWOULDBLOCK;
 use const SOCKET_ECONNRESET;
@@ -65,9 +65,6 @@ final class Client
     private const PACKET_DECODE_NEEDED = 0x00;
     private const PACKET_DECODE_NOT_NEEDED = 0x01;
 
-    private const FLUSH_THRESHOLD = 0.05;
-    private const FLUSH_AMOUNT = 5;
-
     private string $readBuffer = "";
     private int $readRemaining = 0;
 
@@ -75,7 +72,6 @@ final class Client
      * @var array<int, string>
      */
     private array $sendQueue = [];
-    private float $lastSend = 0.0;
 
     private bool $closed = false;
 
@@ -133,7 +129,9 @@ final class Client
             return;
         }
 
-        $this->sendQueue[] = $buffer;
+        foreach (str_split($buffer, Client::PACKET_FRAME_SIZE) as $frame) {
+            $this->sendQueue[] = $frame;
+        }
     }
 
     public function flush(): void
@@ -142,15 +140,7 @@ final class Client
             return;
         }
 
-        $now = microtime(true);
-        if ($now - $this->lastSend < Client::FLUSH_THRESHOLD) {
-            return;
-        }
-
-        $this->lastSend = $now;
-        for ($i = 0; $i < Client::FLUSH_AMOUNT && count($this->sendQueue) > 0; ++$i) {
-            $this->internalWrite(array_shift($this->sendQueue));
-        }
+        $this->internalWrite(array_shift($this->sendQueue));
     }
 
     public function close(): void
