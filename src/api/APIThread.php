@@ -170,6 +170,10 @@ final class APIThread extends Thread
     public function read(): ?string
     {
         $lengthBytes = $this->internalRead(APIThread::PACKET_LENGTH_SIZE);
+        if ($lengthBytes === null) {
+            return null;
+        }
+
         try {
             $length = Binary::readInt($lengthBytes);
         } catch (BinaryDataException) {
