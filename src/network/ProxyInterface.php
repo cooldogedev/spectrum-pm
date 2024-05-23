@@ -121,7 +121,7 @@ final class ProxyInterface implements NetworkInterface
             decode: $this->decode,
             logger: $server->getLogger(),
 
-            composerAutoloader: COMPOSER_AUTOLOADER_PATH,
+            autoloaderPath: COMPOSER_AUTOLOADER_PATH,
             port: $server->getPort(),
         );
 

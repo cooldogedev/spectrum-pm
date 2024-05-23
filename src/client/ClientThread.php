@@ -53,7 +53,7 @@ final class ClientThread extends Thread
         private readonly ThreadSafeArray     $decode,
         private readonly ThreadSafeLogger    $logger,
 
-        private readonly string              $composerAutoloader,
+        private readonly string              $autoloaderPath,
         private readonly int                 $port,
     ) {}
 
@@ -67,7 +67,7 @@ final class ClientThread extends Thread
 
         GlobalLogger::set($this->logger);
 
-        require $this->composerAutoloader;
+        require $this->autoloaderPath;
 
         $this->running = true;
 
