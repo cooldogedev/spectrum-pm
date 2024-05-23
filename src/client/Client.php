@@ -30,40 +30,28 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client;
 
-use cooldogedev\Spectrum\client\exception\SocketClosedException;
-use cooldogedev\Spectrum\client\exception\SocketException;
+use Closure;
+use NetherGames\Quiche\io\QueueWriter;
+use NetherGames\Quiche\stream\BiDirectionalQuicheStream;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryDataException;
-use pocketmine\utils\Utils;
-use Socket;
 use function array_shift;
 use function count;
-use function socket_setopt;
-use function socket_recv;
-use function socket_write;
-use function socket_last_error;
-use function socket_strerror;
-use function socket_close;
 use function strlen;
-use function str_split;
+use function substr;
 use function libdeflate_deflate_compress;
 use function zlib_decode;
-use const MSG_DONTWAIT;
-use const SOCKET_EWOULDBLOCK;
-use const SOCKET_ECONNRESET;
-use const SOL_SOCKET;
-use const SO_SNDBUF;
-use const SO_RCVBUF;
 
 final class Client
 {
-    private const SOCKET_BUFFER_SIZE = 1024 * 1024 * 8;
-
     private const PACKET_LENGTH_SIZE = 4;
     private const PACKET_FRAME_SIZE = 1024 * 64;
+
     private const PACKET_DECODE_NEEDED = 0x00;
     private const PACKET_DECODE_NOT_NEEDED = 0x01;
+
+    public readonly QueueWriter $writer;
 
     private string $readBuffer = "";
     private int $readRemaining = 0;
@@ -76,47 +64,36 @@ final class Client
     private bool $closed = false;
 
     public function __construct(
-        public readonly Socket           $socket,
-        public readonly ThreadSafeLogger $logger,
-        public readonly int              $id,
+        public readonly BiDirectionalQuicheStream $stream,
+        public readonly ThreadSafeLogger          $logger,
+        public readonly Closure                   $onRead,
+        public readonly int                       $id,
     ) {
-        socket_setopt($this->socket, SOL_SOCKET, SO_SNDBUF, Client::SOCKET_BUFFER_SIZE);
-        socket_setopt($this->socket, SOL_SOCKET, SO_RCVBUF, Client::SOCKET_BUFFER_SIZE);
-    }
+        $this->writer = $this->stream->setupWriter();
+        $this->stream->setOnDataArrival(function (string $data): void {
+            $this->readBuffer .= $data;
+            if ($this->readRemaining === 0) {
+                if (strlen($this->readBuffer) < Client::PACKET_LENGTH_SIZE) {
+                    return;
+                }
 
-    public function read(): ?string
-    {
-        if ($this->readRemaining === 0) {
-            $length = $this->internalRead(Client::PACKET_LENGTH_SIZE);
-            if ($length === null) {
-                return null;
+                try {
+                    $length = Binary::readInt(substr($this->readBuffer, 0, 4));
+                } catch (BinaryDataException) {
+                    return;
+                }
+
+                $this->readBuffer = substr($this->readBuffer, 4);
+                $this->readRemaining = $length - strlen($this->readBuffer);
+                return;
             }
 
-            try {
-                $length = Binary::readInt($length);
-            } catch (BinaryDataException) {
-                return null;
+            $this->readRemaining -= strlen($data);
+            if ($this->readRemaining <= 0) {
+                ($this->onRead)(@zlib_decode($this->readBuffer));
+                $this->readBuffer = "";
             }
-
-            $this->readBuffer = "";
-            $this->readRemaining = $length;
-        }
-
-        $buffer = $this->internalRead($this->readRemaining);
-        if ($buffer === null) {
-            return null;
-        }
-
-        $this->readBuffer .= $buffer;
-        $this->readRemaining -= strlen($buffer);
-        if ($this->readRemaining > 0) {
-            return null;
-        }
-
-        $buffer = @zlib_decode($this->readBuffer);
-        $this->readBuffer = "";
-        $this->readRemaining = 0;
-        return $buffer !== false ? $buffer : null;
+        });
     }
 
     public function write(string $buffer, bool $decodeNeeded): void
@@ -125,13 +102,11 @@ final class Client
         $buffer = Binary::writeInt(strlen($buffer)) . $buffer;
 
         if (strlen($buffer) <= Client::PACKET_FRAME_SIZE) {
-            $this->internalWrite($buffer);
+            $this->writer->write($buffer);
             return;
         }
 
-        foreach (str_split($buffer, Client::PACKET_FRAME_SIZE) as $frame) {
-            $this->sendQueue[] = $frame;
-        }
+        $this->sendQueue[] = $buffer;
     }
 
     public function flush(): void
@@ -140,7 +115,7 @@ final class Client
             return;
         }
 
-        $this->internalWrite(array_shift($this->sendQueue));
+        $this->writer->write(array_shift($this->sendQueue));
     }
 
     public function close(): void
@@ -149,48 +124,8 @@ final class Client
             return;
         }
 
-        @socket_close($this->socket);
+        $this->stream->onConnectionClose(false);
         $this->closed = true;
         $this->logger->debug("Closed client " . $this->id);
-    }
-
-    private function internalRead(int $length): ?string
-    {
-        if ($length > Client::PACKET_FRAME_SIZE) {
-            $length = Client::PACKET_FRAME_SIZE;
-        }
-
-        $bytes = @socket_recv($this->socket, $buffer, $length, Utils::getOS() === Utils::OS_WINDOWS ? 0 : MSG_DONTWAIT);
-        if ($bytes === false || $buffer === null) {
-            $this->checkErrors();
-            return null;
-        }
-        return $buffer;
-    }
-
-    private function internalWrite(string $bytes): void
-    {
-        $bytes = @socket_write($this->socket, $bytes, strlen($bytes));
-        if ($bytes === false) {
-            $this->checkErrors();
-        }
-    }
-
-    private function checkErrors(): void
-    {
-        $error = socket_last_error($this->socket);
-        if ($error === 0) {
-            return;
-        }
-
-        if ($error === SOCKET_EWOULDBLOCK || $error === 11) {
-            return;
-        }
-
-        if ($error === SOCKET_ECONNRESET || $error === 10004 || $error === 10053 || $error === 10054) {
-            throw new SocketClosedException("socket is closed");
-        }
-
-        throw new SocketException(socket_strerror($error));
     }
 }

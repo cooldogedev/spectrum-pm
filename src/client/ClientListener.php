@@ -34,53 +34,33 @@ use cooldogedev\Spectrum\client\exception\SocketClosedException;
 use cooldogedev\Spectrum\client\exception\SocketException;
 use cooldogedev\Spectrum\client\packet\DisconnectPacket;
 use cooldogedev\Spectrum\client\packet\LoginPacket;
-use cooldogedev\Spectrum\client\packet\ProxyPacketIds;
 use cooldogedev\Spectrum\client\packet\ProxyPacketPool;
 use cooldogedev\Spectrum\client\packet\ProxySerializer;
+use NetherGames\Quiche\QuicheConnection;
+use NetherGames\Quiche\socket\QuicheServerSocket;
+use NetherGames\Quiche\SocketAddress;
+use NetherGames\Quiche\stream\BiDirectionalQuicheStream;
+use NetherGames\Quiche\stream\QuicheStream;
 use pmmp\thread\ThreadSafeArray;
-use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
-use pocketmine\utils\ServerException;
+use RuntimeException;
 use Socket;
-use function count;
-use function socket_accept;
-use function socket_bind;
-use function socket_close;
-use function socket_create;
-use function socket_getpeername;
-use function socket_last_error;
-use function socket_listen;
+use function getenv;
 use function socket_read;
-use function socket_select;
-use function socket_set_nonblock;
-use function socket_set_option;
-use function socket_strerror;
-use const AF_INET;
-use const SO_LINGER;
-use const SO_RCVBUF;
-use const SO_RCVTIMEO;
-use const SO_REUSEADDR;
-use const SO_SNDBUF;
-use const SO_SNDTIMEO;
-use const SOCK_STREAM;
-use const SOL_SOCKET;
-use const SOL_TCP;
-use const TCP_NODELAY;
 
 final class ClientListener
 {
-    private const SOCKET_READER_ID = -1;
-
-    private const SOCKET_BACKLOG = 10;
-
-    private const SOCKET_TIMEOUT_SELECT = 5;
-    private const SOCKET_TIMEOUT_READ_WRITE = 5;
-
-    private const SOCKET_BUFFER = 1024 * 1024 * 8;
+    private const SOCKET_BUFFER = 1024 * 1024 * 10;
     private const SOCKET_READER_LENGTH = 1024 * 64;
 
-    private readonly Socket $socket;
+    private const CONNECTION_MTU = 1350;
+    private const CONNECTION_MAX_TIMEOUT = 2000;
+
+    private const ENV_CERT_PATH = "CERT_PATH";
+    private const ENV_KEY_PATH = "KEY_PATH";
+
+    private readonly QuicheServerSocket $socket;
 
     /**
      * @phpstan-var array<int, Client>
@@ -102,111 +82,73 @@ final class ClientListener
 
     public function start(): void
     {
-        $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        $this->socket = new QuicheServerSocket([new SocketAddress("0.0.0.0", $this->port)], function (QuicheConnection $connection, ?QuicheStream $stream): void {
+            if (!$stream instanceof BiDirectionalQuicheStream) {
+                return;
+            }
 
-        socket_set_nonblock($this->socket);
+            $identifier = $this->nextId++;
+            $address = $connection->getPeerAddress();
+            $this->clients[$identifier] = new Client(
+                stream: $stream,
+                logger: $this->logger,
+                onRead: function (string $data) use ($identifier): void {
+                    $client = $this->clients[$identifier];
+                    try {
+                        $packet = ProxyPacketPool::getInstance()->getPacket($data);
+                        if ($packet instanceof DisconnectPacket) {
+                            $this->disconnect($client, false);
+                        }
+                        $this->in[] = Binary::writeInt($identifier) . $data;
+                    } catch (SocketException $exception) {
+                        $this->disconnect($client, true);
+                        if (!$exception instanceof SocketClosedException) {
+                            $this->logger->logException($exception);
+                        }
+                    }
+                },
+                id: $identifier,
+            );
 
-        socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, 1);
-        socket_set_option($this->socket, SOL_TCP, TCP_NODELAY, 1);
+            $this->in[] = ProxySerializer::encode($this->nextId, LoginPacket::create($address->getAddress(), $address->getPort()));
+            $this->logger->debug("Accepted client " . $this->nextId . " from " . $address->getAddress());
+        });
 
-        socket_set_option($this->socket, SOL_SOCKET, SO_SNDBUF, ClientListener::SOCKET_BUFFER);
-        socket_set_option($this->socket, SOL_SOCKET, SO_RCVBUF, ClientListener::SOCKET_BUFFER);
+        $certPath = getenv(ClientListener::ENV_CERT_PATH);
+        if ($certPath === false || !file_exists($certPath)) {
+            throw new RuntimeException("cert path is not found");
+        }
 
-        socket_bind($this->socket, "0.0.0.0", $this->port);
-        socket_listen($this->socket, ClientListener::SOCKET_BACKLOG);
+        $keyPath = getenv(ClientListener::ENV_KEY_PATH);
+        if ($keyPath === false || !file_exists($keyPath)) {
+            throw new RuntimeException("key path is not found");
+        }
+
+        $this->socket->getConfig()
+            ->loadCertChainFromFile($certPath)
+            ->loadPrivKeyFromFile($keyPath)
+
+            ->enableBidirectionalStreams()
+
+            ->setInitialMaxData(ClientListener::SOCKET_BUFFER)
+            ->setMaxRecvUdpPayloadSize(ClientListener::CONNECTION_MTU)
+            ->setMaxSendUdpPayloadSize(ClientListener::CONNECTION_MTU)
+
+            ->setVerifyPeer(false)
+            ->setApplicationProtos(["spectrum"])
+
+            ->setMaxIdleTimeout(ClientListener::CONNECTION_MAX_TIMEOUT)
+            ->setEnableActiveMigration(false)
+            ->discoverPMTUD(true);
+        $this->socket->registerSocket($this->reader, function (): void {
+           socket_read($this->reader, ClientListener::SOCKET_READER_LENGTH);
+        });
     }
 
     public function tick(): void
     {
-        $this->accept();
-        $this->read();
         $this->write();
         $this->flush();
-    }
-
-    private function accept(): void
-    {
-        $socket = socket_accept($this->socket);
-
-        if ($socket === false) {
-            return;
-        }
-
-        socket_set_nonblock($socket);
-
-        socket_set_option($socket, SOL_SOCKET, SO_LINGER, ["l_onoff" => 1, "l_linger" => 0]);
-
-        socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO, ["sec" => ClientListener::SOCKET_TIMEOUT_READ_WRITE, "usec" => 0]);
-        socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ["sec" => ClientListener::SOCKET_TIMEOUT_READ_WRITE, "usec" => 0]);
-
-        socket_getpeername($socket, $address, $port);
-
-        $this->nextId++;
-        $this->clients[$this->nextId] = new Client(
-            socket: $socket,
-            logger: $this->logger,
-            id: $this->nextId,
-        );
-
-        $this->in[] = ProxySerializer::encode($this->nextId, LoginPacket::create($address, $port));
-        $this->logger->debug("Accepted client " . $this->nextId . " from " . $address . ":" . $port);
-    }
-
-    private function read(): void
-    {
-        $read = [];
-        $read[ClientListener::SOCKET_READER_ID] = $this->reader;
-
-        foreach ($this->clients as $id => $client) {
-            $read[$id] = $client->socket;
-        }
-
-        $write = null;
-        $except = null;
-
-        if (count($read) === 0) {
-            return;
-        }
-
-        $changed = socket_select($read, $write, $except, ClientListener::SOCKET_TIMEOUT_SELECT);
-
-        if ($changed === false) {
-            throw new ServerException("Failed to select sockets: " . socket_strerror(socket_last_error($this->socket)));
-        }
-
-        if ($changed === 0) {
-            return;
-        }
-
-        foreach ($read as $id => $socket) {
-            if ($id === ClientListener::SOCKET_READER_ID) {
-                socket_read($socket, ClientListener::SOCKET_READER_LENGTH);
-                continue;
-            }
-
-            $client = $this->clients[$id] ?? null;
-
-            if ($client === null) {
-                continue;
-            }
-
-            try {
-                if (($buffer = $client->read()) !== null) {
-                    $packet = ProxyPacketPool::getInstance()->getPacket($buffer);
-
-                    if ($packet instanceof DisconnectPacket) {
-                        $this->disconnect($client, false);
-                    }
-
-                    $this->in[] = Binary::writeInt($client->id) . $buffer;
-                }
-            } catch (SocketException $exception) {
-                $this->disconnect($client, true);
-                if (!$exception instanceof SocketClosedException) {
-                    $this->logger->logException($exception);
-                }
-            }
-        }
     }
 
     private function write(): void
@@ -273,6 +215,6 @@ final class ClientListener
             unset($this->clients[$client->id]);
         }
 
-        socket_close($this->socket);
+        $this->socket->close(false, 0, "");
     }
 }

@@ -7,6 +7,7 @@
             "cooldogedev\\Spectrum\\": "src/"
         }
     },
+    "minimum-stability": "dev",
     "authors": [
         {
             "name": "Doge",
@@ -17,6 +18,7 @@
         "ext-sockets": "*",
         "ext-pmmpthread": "*",
         "ext-libdeflate": "*",
-        "ext-zlib": "*"
+        "ext-zlib": "*",
+        "nethergamesmc/quiche": "dev-master"
     }
 }
