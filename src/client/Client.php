@@ -36,8 +36,6 @@ use NetherGames\Quiche\stream\BiDirectionalQuicheStream;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryDataException;
-use function array_shift;
-use function count;
 use function strlen;
 use function substr;
 use function libdeflate_deflate_compress;
@@ -46,7 +44,6 @@ use function zlib_decode;
 final class Client
 {
     private const PACKET_LENGTH_SIZE = 4;
-    private const PACKET_FRAME_SIZE = 1024 * 64;
 
     private const PACKET_DECODE_NEEDED = 0x00;
     private const PACKET_DECODE_NOT_NEEDED = 0x01;
@@ -55,11 +52,6 @@ final class Client
 
     private string $readBuffer = "";
     private int $readRemaining = 0;
-
-    /**
-     * @var array<int, string>
-     */
-    private array $sendQueue = [];
 
     private bool $closed = false;
 
@@ -99,23 +91,7 @@ final class Client
     public function write(string $buffer, bool $decodeNeeded): void
     {
         $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
-        $buffer = Binary::writeInt(strlen($buffer)) . $buffer;
-
-        if (strlen($buffer) <= Client::PACKET_FRAME_SIZE) {
-            $this->writer->write($buffer);
-            return;
-        }
-
-        $this->sendQueue[] = $buffer;
-    }
-
-    public function flush(): void
-    {
-        if (count($this->sendQueue) === 0) {
-            return;
-        }
-
-        $this->writer->write(array_shift($this->sendQueue));
+        $this->writer->write(Binary::writeInt(strlen($buffer)) . $buffer);
     }
 
     public function close(): void
