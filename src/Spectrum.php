@@ -34,13 +34,19 @@ use Closure;
 use cooldogedev\Spectrum\api\APIThread;
 use cooldogedev\Spectrum\client\packet\ProxyPacketIds;
 use cooldogedev\Spectrum\network\ProxyInterface;
+use cooldogedev\Spectrum\util\ComposerRegisterAsyncTask;
 use pmmp\thread\ThreadSafeArray;
 use pocketmine\event\EventPriority;
 use pocketmine\event\server\NetworkInterfaceRegisterEvent;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\network\mcpe\protocol\types\login\AuthenticationData;
 use pocketmine\network\mcpe\raklib\RakLibInterface;
+use pocketmine\network\query\DedicatedQueryNetworkInterface;
 use pocketmine\plugin\PluginBase;
+use function is_file;
+use const spectrum\COMPOSER_AUTOLOADER_PATH;
+
+require_once "CoreConstants.php";
 
 final class Spectrum extends PluginBase
 {
@@ -75,6 +81,22 @@ final class Spectrum extends PluginBase
 
     public readonly ProxyInterface $interface;
 
+    protected function onLoad(): void
+    {
+        if (is_file(COMPOSER_AUTOLOADER_PATH)) {
+            require_once(COMPOSER_AUTOLOADER_PATH);
+
+            $asyncPool = $this->getServer()->getAsyncPool();
+            $asyncPool->addWorkerStartHook(static function (int $workerId) use ($asyncPool): void {
+                $asyncPool->submitTaskToWorker(new ComposerRegisterAsyncTask(COMPOSER_AUTOLOADER_PATH), $workerId);
+            });
+        } else {
+            $this->getLogger()->error("Composer autoloader not found at " . COMPOSER_AUTOLOADER_PATH);
+            $this->getLogger()->error("Please install or update Composer dependencies or use provided builds.");
+            $this->getServer()->shutdown();
+        }
+    }
+
     protected function onEnable(): void
     {
         if ($this->getConfig()->getNested("api.enabled"))  {
@@ -103,7 +125,8 @@ final class Spectrum extends PluginBase
             $server->getPluginManager()->registerEvent(
                 event: NetworkInterfaceRegisterEvent::class,
                 handler: static function (NetworkInterfaceRegisterEvent $event): void {
-                    if ($event->getInterface() instanceof RakLibInterface) {
+                    $interface = $event->getInterface();
+                    if ($interface instanceof DedicatedQueryNetworkInterface || $interface instanceof RakLibInterface) {
                         $event->cancel();
                     }
                 },

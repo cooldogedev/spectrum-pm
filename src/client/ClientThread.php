@@ -52,6 +52,8 @@ final class ClientThread extends Thread
 
         private readonly ThreadSafeArray     $decode,
         private readonly ThreadSafeLogger    $logger,
+
+        private readonly string              $composerAutoloader,
         private readonly int                 $port,
     ) {}
 
@@ -64,6 +66,8 @@ final class ClientThread extends Thread
         ini_set("memory_limit", "512M");
 
         GlobalLogger::set($this->logger);
+
+        require $this->composerAutoloader;
 
         $this->running = true;
 

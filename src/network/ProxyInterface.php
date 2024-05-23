@@ -75,6 +75,7 @@ use function socket_write;
 use const AF_INET;
 use const AF_UNIX;
 use const SOCK_STREAM;
+use const spectrum\COMPOSER_AUTOLOADER_PATH;
 
 final class ProxyInterface implements NetworkInterface
 {
@@ -119,6 +120,8 @@ final class ProxyInterface implements NetworkInterface
 
             decode: $this->decode,
             logger: $server->getLogger(),
+
+            composerAutoloader: COMPOSER_AUTOLOADER_PATH,
             port: $server->getPort(),
         );
 
