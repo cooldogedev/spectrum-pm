@@ -53,6 +53,7 @@ final class ClientListener
 {
     private const SOCKET_BUFFER = 1024 * 1024 * 10;
     private const SOCKET_READER_LENGTH = 1024 * 64;
+    private const SOCKET_SELECT_TIMEOUT = 50;
 
     private const CONNECTION_MTU = 1350;
     private const CONNECTION_MAX_TIMEOUT = 2000;
@@ -83,7 +84,9 @@ final class ClientListener
     public function start(): void
     {
         $this->socket = new QuicheServerSocket([new SocketAddress("0.0.0.0", $this->port)], function (QuicheConnection $connection, ?QuicheStream $stream): void {
+            $this->logger->debug("accepted stream");
             if (!$stream instanceof BiDirectionalQuicheStream) {
+                $this->logger->debug("ignored stream: non-bidirectional");
                 return;
             }
 
@@ -142,12 +145,14 @@ final class ClientListener
             ->discoverPMTUD(true);
         $this->socket->registerSocket($this->reader, function (): void {
            socket_read($this->reader, ClientListener::SOCKET_READER_LENGTH);
+           $this->write();
         });
+        $this->socket->tick();
     }
 
     public function tick(): void
     {
-        $this->write();
+        $this->socket->selectSockets(ClientListener::SOCKET_SELECT_TIMEOUT);
     }
 
     private function write(): void
