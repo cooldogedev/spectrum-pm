@@ -147,7 +147,6 @@ final class ClientListener
            socket_read($this->reader, ClientListener::SOCKET_READER_LENGTH);
            $this->write();
         });
-        $this->socket->tick();
     }
 
     public function tick(): void
