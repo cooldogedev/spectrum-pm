@@ -84,9 +84,7 @@ final class ClientListener
     public function start(): void
     {
         $this->socket = new QuicheServerSocket([new SocketAddress("0.0.0.0", $this->port)], function (QuicheConnection $connection, ?QuicheStream $stream): void {
-            $this->logger->debug("accepted stream");
             if (!$stream instanceof BiDirectionalQuicheStream) {
-                $this->logger->debug("ignored stream: non-bidirectional");
                 return;
             }
 
