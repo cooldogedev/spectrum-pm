@@ -31,6 +31,7 @@ declare(strict_types=1);
 namespace cooldogedev\Spectrum\client;
 
 use Closure;
+use Exception;
 use NetherGames\Quiche\io\QueueWriter;
 use NetherGames\Quiche\stream\BiDirectionalQuicheStream;
 use pocketmine\thread\log\ThreadSafeLogger;
@@ -90,8 +91,12 @@ final class Client
 
     public function write(string $buffer, bool $decodeNeeded): void
     {
-        $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
-        $this->writer->write(Binary::writeInt(strlen($buffer)) . $buffer);
+        try {
+            $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
+            $this->writer->write(Binary::writeInt(strlen($buffer)) . $buffer);
+        } catch (Exception) {
+            $this->close();
+        }
     }
 
     public function close(): void

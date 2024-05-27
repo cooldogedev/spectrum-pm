@@ -42,6 +42,8 @@ use NetherGames\Quiche\SocketAddress;
 use NetherGames\Quiche\stream\BiDirectionalQuicheStream;
 use NetherGames\Quiche\stream\QuicheStream;
 use pmmp\thread\ThreadSafeArray;
+use pocketmine\network\mcpe\protocol\DataPacket;
+use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use RuntimeException;
@@ -88,24 +90,19 @@ final class ClientListener
                 return;
             }
 
-            $identifier = $this->nextId++;
+            $this->nextId++;
+            $identifier = $this->nextId;
             $address = $connection->getPeerAddress();
             $this->clients[$identifier] = new Client(
                 stream: $stream,
                 logger: $this->logger,
                 onRead: function (string $data) use ($identifier): void {
-                    $client = $this->clients[$identifier];
-                    try {
-                        $packet = ProxyPacketPool::getInstance()->getPacket($data);
-                        if ($packet instanceof DisconnectPacket) {
-                            $this->disconnect($client, false);
-                        }
-                        $this->in[] = Binary::writeInt($identifier) . $data;
-                    } catch (SocketException $exception) {
-                        $this->disconnect($client, true);
-                        if (!$exception instanceof SocketClosedException) {
-                            $this->logger->logException($exception);
-                        }
+                    $this->in[] = Binary::writeInt($identifier) . $data;
+
+                    $offset = 0;
+                    $pid = Binary::readUnsignedVarInt($data, $offset) & DataPacket::PID_MASK;
+                    if ($pid === ProtocolInfo::DISCONNECT_PACKET) {
+                        $this->disconnect($this->clients[$identifier], false);
                     }
                 },
                 id: $identifier,
@@ -158,13 +155,11 @@ final class ClientListener
             [$identifier, $buffer] = ProxySerializer::decodeRaw($out);
 
             $client = $this->clients[$identifier] ?? null;
-
             if ($client === null) {
                 continue;
             }
 
             $packet = ProxyPacketPool::getInstance()->getPacket($buffer);
-
             if ($packet instanceof DisconnectPacket) {
                 $this->disconnect($client, false);
                 continue;
@@ -187,12 +182,12 @@ final class ClientListener
             return;
         }
 
-        $client->close();
-        unset($this->clients[$client->id]);
-
         if ($notifyMain) {
             $this->in[] = ProxySerializer::encode($client->id, DisconnectPacket::create());
         }
+
+        $client->close();
+        unset($this->clients[$client->id]);
     }
 
     public function close(): void

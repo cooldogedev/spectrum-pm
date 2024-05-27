@@ -44,16 +44,11 @@ final class ProxySerializer
         return $encoder->getBuffer();
     }
 
-    public static function encodeRaw(int $identifier, string $buffer): string
-    {
-        return Binary::writeInt($identifier) . $buffer;
-    }
-
     /**
      * @return array{0: int, 1: string}
      */
     public static function decodeRaw(string $buffer): array
     {
-        return [Binary::readInt($buffer), substr($buffer, 4)];
+        return [Binary::readInt(substr($buffer, 0, 4)), substr($buffer, 4)];
     }
 }

@@ -61,6 +61,7 @@ use pocketmine\player\Player;
 use pocketmine\player\XboxLivePlayerInfo;
 use pocketmine\scheduler\ClosureTask;
 use pocketmine\snooze\SleeperHandlerEntry;
+use pocketmine\utils\Binary;
 use pocketmine\utils\Utils;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
@@ -130,11 +131,11 @@ final class ProxyInterface implements NetworkInterface
         $this->entityEventBroadcaster = new StandardEntityEventBroadcaster($this->packetBroadcaster, $this->typeConverter);
 
         $bandwidthTracker = $server->getNetwork()->getBandwidthTracker();
-        $this->plugin->getScheduler()->scheduleDelayedRepeatingTask(new ClosureTask(function () use ($bandwidthTracker): void {
+        $this->plugin->getScheduler()->scheduleRepeatingTask(new ClosureTask(function () use ($bandwidthTracker): void {
             $bandwidthTracker->add($this->sentBytes, $this->receivedBytes);
             $this->sentBytes = 0;
             $this->receivedBytes = 0;
-        }), 20, 20);
+        }), 20);
     }
 
     private function handleIncoming(): void
@@ -144,7 +145,6 @@ final class ProxyInterface implements NetworkInterface
             $this->receivedBytes += strlen($buffer);
 
             $packet = ProxyPacketPool::getInstance()->getPacket($buffer);
-
             if ($packet === null) {
                 $this->plugin->getLogger()->debug("Received unknown packet from client " . $identifier);
                 $this->disconnect($identifier, true);
@@ -152,7 +152,6 @@ final class ProxyInterface implements NetworkInterface
             }
 
             $session = $this->sessions[$identifier] ?? null;
-
             if (!$packet instanceof ProxyPacket) {
                 try {
                     $session?->handleDataPacket($packet, $buffer);
@@ -164,7 +163,6 @@ final class ProxyInterface implements NetworkInterface
             }
 
             $packet->decode(PacketSerializer::decoder($buffer, 0));
-
             match (true) {
                 $packet instanceof LoginPacket => $this->login($identifier, $packet->address, $packet->port),
                 $packet instanceof ConnectionRequestPacket && $session !== null => $this->connect($session, $identifier, $packet->address, $packet->token, $packet->clientData, $packet->identityData),
@@ -338,7 +336,7 @@ final class ProxyInterface implements NetworkInterface
 
     public function sendOutgoingRaw(int $identifier, string $packet, ?int $receiptId): void
     {
-        $buffer = ProxySerializer::encodeRaw($identifier, $packet);
+        $buffer = Binary::writeInt($identifier) . $packet;
         $this->thread->out[] = $buffer;
         $this->sentBytes += strlen($buffer);
         @socket_write($this->writer, "\00");
