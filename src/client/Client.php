@@ -68,11 +68,6 @@ final class Client
     private string $readBuffer = "";
     private int $readRemaining = 0;
 
-    /**
-     * @var array<int, string>
-     */
-    private array $sendQueue = [];
-
     private bool $closed = false;
 
     public function __construct(
@@ -121,26 +116,8 @@ final class Client
 
     public function write(string $buffer, bool $decodeNeeded): void
     {
-        $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
-        $buffer = Binary::writeInt(strlen($buffer)) . $buffer;
-
-        if (strlen($buffer) <= Client::PACKET_FRAME_SIZE) {
-            $this->internalWrite($buffer);
-            return;
-        }
-
-        foreach (str_split($buffer, Client::PACKET_FRAME_SIZE) as $frame) {
-            $this->sendQueue[] = $frame;
-        }
-    }
-
-    public function flush(): void
-    {
-        if (count($this->sendQueue) === 0) {
-            return;
-        }
-
-        $this->internalWrite(array_shift($this->sendQueue));
+        $compressed = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
+        $this->internalWrite(Binary::writeInt(strlen($compressed)) . $compressed);
     }
 
     public function close(): void

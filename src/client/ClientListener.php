@@ -121,7 +121,6 @@ final class ClientListener
         $this->accept();
         $this->read();
         $this->write();
-        $this->flush();
     }
 
     private function accept(): void
@@ -229,20 +228,6 @@ final class ClientListener
 
             try {
                 $client->write($buffer, $this->decode[$packet->pid()] ?? false);
-            } catch (SocketException $exception) {
-                $this->disconnect($client, true);
-                if (!$exception instanceof SocketClosedException) {
-                    $this->logger->logException($exception);
-                }
-            }
-        }
-    }
-
-    private function flush(): void
-    {
-        foreach ($this->clients as $client) {
-            try {
-                $client->flush();
             } catch (SocketException $exception) {
                 $this->disconnect($client, true);
                 if (!$exception instanceof SocketClosedException) {
