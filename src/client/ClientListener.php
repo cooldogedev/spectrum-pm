@@ -100,7 +100,6 @@ final class ClientListener
                 reader: function (string $data) use ($identifier): void {
                     $offset = 0;
                     $pid = Binary::readUnsignedVarInt($data, $offset) & DataPacket::PID_MASK;
-                    $this->logger->debug("pid: " . $pid);
                     if ($pid === ProtocolInfo::DISCONNECT_PACKET) {
                         $this->disconnect($identifier, false);
                         return;
