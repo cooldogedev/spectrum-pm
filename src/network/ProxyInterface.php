@@ -324,14 +324,9 @@ final class ProxyInterface implements NetworkInterface
 
     public function sendOutgoing(int $identifier, ProxyPacket $packet, ?int $receiptId): void
     {
-        $buffer = ProxySerializer::encode($identifier, $packet);
-        $this->thread->out[] = $buffer;
-        $this->sentBytes += strlen($buffer);
-        socket_write($this->writer, "\00");
-
-        if ($receiptId !== null && isset($this->sessions[$identifier])) {
-            $this->sessions[$identifier]->handleAckReceipt($receiptId);
-        }
+        $encoder = PacketSerializer::encoder();
+        $packet->encode($encoder);
+        $this->sendOutgoingRaw($identifier, $encoder->getBuffer(), $receiptId);
     }
 
     public function sendOutgoingRaw(int $identifier, string $packet, ?int $receiptId): void

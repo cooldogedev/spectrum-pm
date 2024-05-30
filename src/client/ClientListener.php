@@ -93,14 +93,14 @@ final class ClientListener
             $this->nextId++;
             $identifier = $this->nextId;
             $address = $connection->getPeerAddress();
+            $stream->addShutdownReadingCallback(fn () => $this->disconnect($identifier, true));
             $this->clients[$identifier] = new Client(
                 stream: $stream,
                 logger: $this->logger,
-
-                closeFn: fn () => $this->disconnect($identifier, true),
-                readFn: function (string $data) use ($identifier): void {
+                reader: function (string $data) use ($identifier): void {
                     $offset = 0;
                     $pid = Binary::readUnsignedVarInt($data, $offset) & DataPacket::PID_MASK;
+                    $this->logger->debug("pid: " . $pid);
                     if ($pid === ProtocolInfo::DISCONNECT_PACKET) {
                         $this->disconnect($identifier, false);
                         return;
@@ -142,8 +142,8 @@ final class ClientListener
             ->setEnableActiveMigration(false)
             ->discoverPMTUD(true);
         $this->socket->registerSocket($this->reader, function (): void {
-           socket_read($this->reader, ClientListener::SOCKET_READER_LENGTH);
            $this->write();
+           socket_read($this->reader, ClientListener::SOCKET_READER_LENGTH);
         });
     }
 
