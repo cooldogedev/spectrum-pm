@@ -51,42 +51,66 @@ final class Client
 
     public readonly QueueWriter $writer;
 
-    private string $readBuffer = "";
-    private int $readRemaining = 0;
+    private string $buffer = "";
+    private int $length = 0;
 
     private bool $closed = false;
 
     public function __construct(
         public readonly BiDirectionalQuicheStream $stream,
         public readonly ThreadSafeLogger          $logger,
-        public readonly Closure                   $onRead,
+
+        public readonly Closure                   $closeFn,
+        public readonly Closure                   $readFn,
+
         public readonly int                       $id,
     ) {
         $this->writer = $this->stream->setupWriter();
         $this->stream->setOnDataArrival(function (string $data): void {
-            $this->readBuffer .= $data;
-            if ($this->readRemaining === 0) {
-                if (strlen($this->readBuffer) < Client::PACKET_LENGTH_SIZE) {
-                    return;
-                }
-
-                try {
-                    $length = Binary::readInt(substr($this->readBuffer, 0, 4));
-                } catch (BinaryDataException) {
-                    return;
-                }
-
-                $this->readBuffer = substr($this->readBuffer, 4);
-                $this->readRemaining = $length - strlen($this->readBuffer);
-                return;
-            }
-
-            $this->readRemaining -= strlen($data);
-            if ($this->readRemaining <= 0) {
-                ($this->onRead)(@zlib_decode($this->readBuffer));
-                $this->readBuffer = "";
-            }
+            $this->buffer .= $data;
+            $this->readLength();
+            $this->readPacket();
         });
+    }
+
+    private function readLength(): void
+    {
+        if ($this->length !== 0) {
+            return;
+        }
+
+        if (strlen($this->buffer) < Client::PACKET_LENGTH_SIZE) {
+            return;
+        }
+
+        $lengthBytes = substr($this->buffer, 0, Client::PACKET_LENGTH_SIZE);
+        try {
+            $length = Binary::readInt($lengthBytes);
+        } catch (BinaryDataException) {
+            return;
+        }
+
+        $this->buffer = substr($this->buffer, Client::PACKET_LENGTH_SIZE);
+        $this->length = $length;
+    }
+
+    private function readPacket(): void
+    {
+        if ($this->length === 0) {
+            return;
+        }
+
+        if ($this->length > strlen($this->buffer)) {
+            return;
+        }
+
+        $payload = @zlib_decode(substr($this->buffer, 0, $this->length));
+        if ($payload !== false) {
+            ($this->readFn)($payload);
+        }
+
+        $this->buffer = substr($this->buffer, $this->length);
+        $this->length = 0;
     }
 
     public function write(string $buffer, bool $decodeNeeded): void
@@ -95,18 +119,23 @@ final class Client
             $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
             $this->writer->write(Binary::writeInt(strlen($buffer)) . $buffer);
         } catch (Exception) {
-            $this->close();
+            $this->close(true);
         }
     }
 
-    public function close(): void
+    public function close(bool $notify = false): void
     {
         if ($this->closed) {
             return;
         }
 
-        $this->stream->onConnectionClose(false);
         $this->closed = true;
+        $this->stream->onConnectionClose(false);
+
+        if ($notify) {
+            ($this->closeFn)();
+        }
+
         $this->logger->debug("Closed client " . $this->id);
     }
 }

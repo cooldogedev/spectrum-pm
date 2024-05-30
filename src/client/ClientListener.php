@@ -96,15 +96,18 @@ final class ClientListener
             $this->clients[$identifier] = new Client(
                 stream: $stream,
                 logger: $this->logger,
-                onRead: function (string $data) use ($identifier): void {
-                    $this->in[] = Binary::writeInt($identifier) . $data;
 
+                closeFn: fn () => $this->disconnect($identifier, true),
+                readFn: function (string $data) use ($identifier): void {
                     $offset = 0;
                     $pid = Binary::readUnsignedVarInt($data, $offset) & DataPacket::PID_MASK;
                     if ($pid === ProtocolInfo::DISCONNECT_PACKET) {
-                        $this->disconnect($this->clients[$identifier], false);
+                        $this->disconnect($identifier, false);
+                        return;
                     }
+                    $this->in[] = Binary::writeInt($identifier) . $data;
                 },
+
                 id: $identifier,
             );
 
@@ -161,14 +164,14 @@ final class ClientListener
 
             $packet = ProxyPacketPool::getInstance()->getPacket($buffer);
             if ($packet instanceof DisconnectPacket) {
-                $this->disconnect($client, false);
+                $this->disconnect($identifier, false);
                 continue;
             }
 
             try {
                 $client->write($buffer, $this->decode[$packet->pid()] ?? false);
             } catch (SocketException $exception) {
-                $this->disconnect($client, true);
+                $this->disconnect($identifier, true);
                 if (!$exception instanceof SocketClosedException) {
                     $this->logger->logException($exception);
                 }
@@ -176,9 +179,10 @@ final class ClientListener
         }
     }
 
-    private function disconnect(Client $client, bool $notifyMain): void
+    private function disconnect(int $clientId, bool $notifyMain): void
     {
-        if (!isset($this->clients[$client->id])) {
+        $client = $this->clients[$clientId] ?? null;
+        if ($client === null) {
             return;
         }
 
