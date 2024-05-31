@@ -64,29 +64,36 @@ final class Client
         $this->writer = $this->stream->setupWriter();
         $this->stream->setOnDataArrival(function (string $data): void {
             $this->buffer .= $data;
-            if ($this->length === 0 && strlen($this->buffer) >= Client::PACKET_LENGTH_SIZE) {
-                try {
-                    $length = Binary::readInt(substr($this->buffer, 0, Client::PACKET_LENGTH_SIZE));
-                } catch (BinaryDataException) {
-                    return;
-                }
+            $this->read();
+        });
+    }
 
-                $this->buffer = substr($this->buffer, Client::PACKET_LENGTH_SIZE);
-                $this->length = $length;
-            }
-
-            if ($this->length === 0 || $this->length > strlen($this->buffer)) {
+    public function read(): void
+    {
+        if ($this->length === 0 && strlen($this->buffer) >= Client::PACKET_LENGTH_SIZE) {
+            try {
+                $length = Binary::readInt(substr($this->buffer, 0, Client::PACKET_LENGTH_SIZE));
+            } catch (BinaryDataException) {
                 return;
             }
+            $this->buffer = substr($this->buffer, Client::PACKET_LENGTH_SIZE);
+            $this->length = $length;
+        }
 
-            $payload = @zlib_decode(substr($this->buffer, 0, $this->length));
-            if ($payload !== false) {
-                ($this->reader)($payload);
-            }
+        if ($this->length === 0 || $this->length > strlen($this->buffer)) {
+            return;
+        }
 
-            $this->buffer = substr($this->buffer, $this->length);
-            $this->length = 0;;
-        });
+        $payload = @zlib_decode(substr($this->buffer, 0, $this->length));
+        if ($payload !== false) {
+            ($this->reader)($payload);
+        }
+
+        $this->buffer = substr($this->buffer, $this->length);
+        $this->length = 0;
+        if (strlen($this->buffer) >= Client::PACKET_LENGTH_SIZE) {
+            $this->read();
+        }
     }
 
     public function write(string $buffer, bool $decodeNeeded): void
