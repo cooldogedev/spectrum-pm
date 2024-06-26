@@ -160,12 +160,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/NetherGamesMC/PHP-Quiche.git",
-                "reference": "bc0aabb6b053ed615a7d920569a15ba461c48055"
+                "reference": "7833a6da6b94fa4b69de49a4ef04874b194f9ef7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/NetherGamesMC/PHP-Quiche/zipball/bc0aabb6b053ed615a7d920569a15ba461c48055",
-                "reference": "bc0aabb6b053ed615a7d920569a15ba461c48055",
+                "url": "https://api.github.com/repos/NetherGamesMC/PHP-Quiche/zipball/7833a6da6b94fa4b69de49a4ef04874b194f9ef7",
+                "reference": "7833a6da6b94fa4b69de49a4ef04874b194f9ef7",
                 "shasum": ""
             },
             "require": {
@@ -194,15 +194,17 @@
             "description": "A Quiche-based QUIC implementation for PHP",
             "support": {
                 "issues": "https://github.com/NetherGamesMC/PHP-Quiche/issues",
-                "source": "https://github.com/NetherGamesMC/PHP-Quiche/tree/1.0.0"
+                "source": "https://github.com/NetherGamesMC/PHP-Quiche/tree/1.1.0"
             },
-            "time": "2024-04-15T08:44:11+00:00"
+            "time": "2024-06-26T19:27:35+00:00"
         }
     ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": [],
+    "stability-flags": {
+        "nethergamesmc/quiche": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
