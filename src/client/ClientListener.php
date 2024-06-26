@@ -58,7 +58,9 @@ final class ClientListener
     private const SOCKET_SELECT_TIMEOUT = 50;
 
     private const CONNECTION_MTU = 1350;
-    private const CONNECTION_MAX_TIMEOUT = 2000;
+
+    private const CONNECTION_MAX_TIMEOUT = 10_000;
+    private const CONNECTION_PING_INTERVAL = 5000;
 
     private const ENV_CERT_PATH = "CERT_PATH";
     private const ENV_KEY_PATH = "KEY_PATH";
@@ -138,7 +140,7 @@ final class ClientListener
             ->setApplicationProtos(["spectrum"])
 
             ->setMaxIdleTimeout(ClientListener::CONNECTION_MAX_TIMEOUT)
-            ->setPingInterval(ClientListener::CONNECTION_MAX_TIMEOUT / 2)
+            ->setPingInterval(ClientListener::CONNECTION_PING_INTERVAL)
 
             ->setEnableActiveMigration(false)
             ->discoverPMTUD(true);
