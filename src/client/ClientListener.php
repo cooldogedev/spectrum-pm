@@ -138,6 +138,8 @@ final class ClientListener
             ->setApplicationProtos(["spectrum"])
 
             ->setMaxIdleTimeout(ClientListener::CONNECTION_MAX_TIMEOUT)
+            ->setPingInterval(ClientListener::CONNECTION_MAX_TIMEOUT / 2)
+
             ->setEnableActiveMigration(false)
             ->discoverPMTUD(true);
         $this->socket->registerSocket($this->reader, function (): void {
