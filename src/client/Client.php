@@ -33,13 +33,13 @@ namespace cooldogedev\Spectrum\client;
 use Closure;
 use NetherGames\Quiche\io\QueueWriter;
 use NetherGames\Quiche\stream\BiDirectionalQuicheStream;
+use pmmp\encoding\ByteBuffer;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryDataException;
+use function snappy_compress;
+use function snappy_uncompress;
 use function strlen;
-use function substr;
-use function libdeflate_deflate_compress;
-use function zlib_decode;
 
 final class Client
 {
@@ -48,11 +48,10 @@ final class Client
     private const PACKET_DECODE_NEEDED = 0x00;
     private const PACKET_DECODE_NOT_NEEDED = 0x01;
 
-    public readonly QueueWriter $writer;
+    private readonly ByteBuffer $buffer;
+    private readonly QueueWriter $writer;
 
-    private string $buffer = "";
     private int $length = 0;
-
     private bool $closed = false;
 
     public function __construct(
@@ -61,44 +60,49 @@ final class Client
         public readonly Closure                   $reader,
         public readonly int                       $id,
     ) {
+        $this->buffer = new ByteBuffer();
         $this->writer = $this->stream->setupWriter();
         $this->stream->setOnDataArrival(function (string $data): void {
-            $this->buffer .= $data;
+            $this->buffer->writeByteArray($data);
             $this->read();
         });
     }
 
     public function read(): void
     {
-        if ($this->length === 0 && strlen($this->buffer) >= Client::PACKET_LENGTH_SIZE) {
+        if ($this->length === 0 && $this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
             try {
-                $length = Binary::readInt(substr($this->buffer, 0, Client::PACKET_LENGTH_SIZE));
+                $length = $this->buffer->readSignedIntBE();
             } catch (BinaryDataException) {
                 return;
             }
-            $this->buffer = substr($this->buffer, Client::PACKET_LENGTH_SIZE);
             $this->length = $length;
+            $this->buffer->reserve($length);
         }
 
-        if ($this->length === 0 || $this->length > strlen($this->buffer)) {
+        if ($this->length === 0 || $this->length > $this->buffer->getUsedLength()) {
             return;
         }
 
-        $payload = @zlib_decode(substr($this->buffer, 0, $this->length));
+        $payload = snappy_uncompress($this->buffer->readByteArray($this->length));
         if ($payload !== false) {
             ($this->reader)($payload);
         }
 
-        $this->buffer = substr($this->buffer, $this->length);
+        $remaining = $this->buffer->readByteArray($this->buffer->getUsedLength() - $this->buffer->getReadOffset());
+        $this->buffer->clear();
         $this->length = 0;
-        if (strlen($this->buffer) >= Client::PACKET_LENGTH_SIZE) {
+        $this->buffer->writeByteArray($remaining);
+        if ($this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
             $this->read();
+        } else {
+            $this->buffer->trim();
         }
     }
 
     public function write(string $buffer, bool $decodeNeeded): void
     {
-        $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer);
+        $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . snappy_compress($buffer);
         $this->writer->write(Binary::writeInt(strlen($buffer)) . $buffer);
     }
 
@@ -109,7 +113,9 @@ final class Client
         }
 
         $this->closed = true;
-        $this->stream->onConnectionClose(false);
+        if ($this->stream->isWritable()) {
+            $this->stream->gracefulShutdownWriting();
+        }
         $this->logger->debug("Closed client " . $this->id);
     }
 }

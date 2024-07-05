@@ -17,8 +17,9 @@
     "require": {
         "ext-sockets": "*",
         "ext-pmmpthread": "*",
-        "ext-libdeflate": "*",
+        "ext-snappy": "*",
         "ext-zlib": "*",
-        "nethergamesmc/quiche": "dev-master"
+        "nethergamesmc/quiche": "dev-master",
+        "ext-encoding": "*"
     }
 }

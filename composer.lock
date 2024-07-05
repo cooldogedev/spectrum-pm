@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "765906aaa58d81b4b6585a1a81a3627c",
+    "content-hash": "be5a1f7a86091591f4374efd2b06f04b",
     "packages": [
         {
             "name": "ircmaxell/ffime",
@@ -210,8 +210,9 @@
     "platform": {
         "ext-sockets": "*",
         "ext-pmmpthread": "*",
-        "ext-libdeflate": "*",
-        "ext-zlib": "*"
+        "ext-snappy": "*",
+        "ext-zlib": "*",
+        "ext-encoding": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.6.0"
