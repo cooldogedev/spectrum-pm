@@ -113,9 +113,15 @@ final class Client
         }
 
         $this->closed = true;
+        $this->stream->setOnDataArrival(static fn () => null);
         if ($this->stream->isWritable()) {
             $this->stream->gracefulShutdownWriting();
         }
         $this->logger->debug("Closed client " . $this->id);
+    }
+
+    public function __destruct()
+    {
+        $this->logger->debug("Garbage collected client " . $this->id);
     }
 }
