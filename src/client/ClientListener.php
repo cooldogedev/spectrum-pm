@@ -30,12 +30,11 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client;
 
-use cooldogedev\Spectrum\client\exception\SocketClosedException;
-use cooldogedev\Spectrum\client\exception\SocketException;
 use cooldogedev\Spectrum\client\packet\DisconnectPacket;
 use cooldogedev\Spectrum\client\packet\LoginPacket;
 use cooldogedev\Spectrum\client\packet\ProxyPacketPool;
 use cooldogedev\Spectrum\client\packet\ProxySerializer;
+use Exception;
 use NetherGames\Quiche\QuicheConnection;
 use NetherGames\Quiche\socket\QuicheServerSocket;
 use NetherGames\Quiche\SocketAddress;
@@ -173,11 +172,9 @@ final class ClientListener
 
             try {
                 $client->write($buffer, $this->decode[$packet->pid()] ?? false);
-            } catch (SocketException $exception) {
+            } catch (Exception $exception) {
                 $this->disconnect($identifier, true);
-                if (!$exception instanceof SocketClosedException) {
-                    $this->logger->logException($exception);
-                }
+                $this->logger->logException($exception);
             }
         }
     }
