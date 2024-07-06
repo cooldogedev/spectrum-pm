@@ -80,7 +80,7 @@ final class Client
             $this->buffer->reserve($length);
         }
 
-        if ($this->length === 0 || $this->length > $this->buffer->getUsedLength()) {
+        if ($this->length === 0 || $this->length > $this->buffer->getUsedLength() - $this->buffer->getReadOffset()) {
             return;
         }
 
@@ -91,8 +91,10 @@ final class Client
 
         $remaining = $this->buffer->readByteArray($this->buffer->getUsedLength() - $this->buffer->getReadOffset());
         $this->buffer->clear();
-        $this->length = 0;
+        $this->buffer->setReadOffset(0);
+        $this->buffer->setWriteOffset(0);
         $this->buffer->writeByteArray($remaining);
+        $this->length = 0;
         if ($this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
             $this->read();
         } else {
