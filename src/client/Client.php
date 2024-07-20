@@ -37,6 +37,8 @@ use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryDataException;
 use pocketmine\utils\Utils;
 use Socket;
+use function snappy_compress;
+use function snappy_uncompress;
 use function socket_setopt;
 use function socket_recv;
 use function socket_write;
@@ -44,8 +46,6 @@ use function socket_last_error;
 use function socket_strerror;
 use function socket_close;
 use function strlen;
-use function libdeflate_deflate_compress;
-use function zlib_decode;
 use const MSG_DONTWAIT;
 use const SOCKET_EWOULDBLOCK;
 use const SOCKET_ECONNRESET;
@@ -105,7 +105,7 @@ final class Client
             return null;
         }
 
-        $buffer = @zlib_decode($this->readBuffer);
+        $buffer = @snappy_uncompress($this->readBuffer);
         $this->readBuffer = "";
         $this->readRemaining = 0;
         return $buffer !== false ? $buffer : null;
@@ -113,7 +113,7 @@ final class Client
 
     public function write(string $buffer, bool $decodeNeeded): void
     {
-        $compressed = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . libdeflate_deflate_compress($buffer, 9);
+        $compressed = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . snappy_compress($buffer);
         $this->internalWrite(Binary::writeInt(strlen($compressed)) . $compressed);
     }
 
