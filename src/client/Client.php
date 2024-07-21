@@ -72,7 +72,7 @@ final class Client
     {
         if ($this->length === 0 && $this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
             try {
-                $length = $this->buffer->readSignedIntBE();
+                $length = $this->buffer->readUnsignedIntBE();
             } catch (BinaryDataException) {
                 return;
             }
