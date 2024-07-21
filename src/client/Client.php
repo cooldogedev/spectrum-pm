@@ -77,10 +77,11 @@ final class Client
         socket_setopt($this->socket, SOL_SOCKET, SO_SNDBUF, Client::SOCKET_BUFFER_SIZE);
         socket_setopt($this->socket, SOL_SOCKET, SO_RCVBUF, Client::SOCKET_BUFFER_SIZE);
     }
+
     public function read(): ?string
     {
         if ($this->length === 0) {
-            $this->buffer->writeByteArray($this->internalRead($this->getBufferLength() - Client::PACKET_LENGTH_SIZE));
+            $this->buffer->writeByteArray($this->internalRead(Client::PACKET_LENGTH_SIZE));
             if ($this->getBufferLength() < Client::PACKET_LENGTH_SIZE) {
                 return null;
             }
