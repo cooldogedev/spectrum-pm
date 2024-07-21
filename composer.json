@@ -17,6 +17,7 @@
         "ext-sockets": "*",
         "ext-pmmpthread": "*",
         "ext-libdeflate": "*",
-        "ext-snappy": "*"
+        "ext-snappy": "*",
+        "ext-encoding": "*"
     }
 }

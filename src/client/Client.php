@@ -32,6 +32,7 @@ namespace cooldogedev\Spectrum\client;
 
 use cooldogedev\Spectrum\client\exception\SocketClosedException;
 use cooldogedev\Spectrum\client\exception\SocketException;
+use pmmp\encoding\ByteBuffer;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryDataException;
@@ -62,9 +63,9 @@ final class Client
     private const PACKET_DECODE_NEEDED = 0x00;
     private const PACKET_DECODE_NOT_NEEDED = 0x01;
 
-    private string $readBuffer = "";
-    private int $readRemaining = 0;
+    private readonly ByteBuffer $buffer;
 
+    private int $length = 0;
     private bool $closed = false;
 
     public function __construct(
@@ -72,43 +73,45 @@ final class Client
         public readonly ThreadSafeLogger $logger,
         public readonly int              $id,
     ) {
+        $this->buffer = new ByteBuffer();
         socket_setopt($this->socket, SOL_SOCKET, SO_SNDBUF, Client::SOCKET_BUFFER_SIZE);
         socket_setopt($this->socket, SOL_SOCKET, SO_RCVBUF, Client::SOCKET_BUFFER_SIZE);
     }
-
     public function read(): ?string
     {
-        if ($this->readRemaining === 0) {
-            $length = $this->internalRead(Client::PACKET_LENGTH_SIZE);
-            if ($length === null) {
+        if ($this->length === 0) {
+            $this->buffer->writeByteArray($this->internalRead($this->getBufferLength() - Client::PACKET_LENGTH_SIZE));
+            if ($this->getBufferLength() < Client::PACKET_LENGTH_SIZE) {
                 return null;
             }
 
             try {
-                $length = Binary::readInt($length);
+                $length = $this->buffer->readUnsignedIntBE();
             } catch (BinaryDataException) {
                 return null;
             }
-
-            $this->readBuffer = "";
-            $this->readRemaining = $length;
+            $this->length = $length;
+            $this->buffer->reserve($length);
         }
 
-        $buffer = $this->internalRead($this->readRemaining);
-        if ($buffer === null) {
+        $this->buffer->writeByteArray($this->internalRead($this->length - $this->getBufferLength()));
+        if ($this->length === 0 || $this->length > $this->getBufferLength()) {
             return null;
         }
 
-        $this->readBuffer .= $buffer;
-        $this->readRemaining -= strlen($buffer);
-        if ($this->readRemaining > 0) {
-            return null;
+        $payload = snappy_uncompress($this->buffer->readByteArray($this->length));
+        $remaining = $this->buffer->readByteArray($this->getBufferLength());
+        $this->buffer->clear();
+        $this->buffer->setReadOffset(0);
+        $this->buffer->setWriteOffset(0);
+        $this->buffer->writeByteArray($remaining);
+        $this->length = 0;
+        if ($this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
+            $this->read();
+        } else {
+            $this->buffer->trim();
         }
-
-        $buffer = @snappy_uncompress($this->readBuffer);
-        $this->readBuffer = "";
-        $this->readRemaining = 0;
-        return $buffer !== false ? $buffer : null;
+        return $payload !== false ? $payload : null;
     }
 
     public function write(string $buffer, bool $decodeNeeded): void
@@ -128,7 +131,7 @@ final class Client
         $this->logger->debug("Closed client " . $this->id);
     }
 
-    private function internalRead(int $length): ?string
+    private function internalRead(int $length): string
     {
         if ($length > Client::PACKET_FRAME_SIZE) {
             $length = Client::PACKET_FRAME_SIZE;
@@ -136,8 +139,8 @@ final class Client
 
         $bytes = @socket_recv($this->socket, $buffer, $length, Utils::getOS() === Utils::OS_WINDOWS ? 0 : MSG_DONTWAIT);
         if ($bytes === false || $buffer === null) {
-            $this->checkErrors();
-            return null;
+           $this->checkErrors();
+            return "";
         }
         return $buffer;
     }
@@ -148,6 +151,11 @@ final class Client
         if ($bytes === false) {
             $this->checkErrors();
         }
+    }
+
+    private function getBufferLength(): int
+    {
+        return $this->buffer->getUsedLength() - $this->buffer->getReadOffset();
     }
 
     private function checkErrors(): void
