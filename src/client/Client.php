@@ -49,6 +49,8 @@ final class Client
     private const PACKET_DECODE_NOT_NEEDED = 0x01;
 
     private readonly ByteBuffer $buffer;
+    private readonly ByteBuffer $writeBuffer;
+
     private readonly QueueWriter $writer;
 
     private int $length = 0;
@@ -97,15 +99,20 @@ final class Client
         $this->length = 0;
         if ($this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
             $this->read();
-        } else {
-            $this->buffer->trim();
         }
     }
 
     public function write(string $buffer, bool $decodeNeeded): void
     {
-        $buffer = Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) . snappy_compress($buffer);
-        $this->writer->write(Binary::writeInt(strlen($buffer)) . $buffer);
+        $compressed = snappy_compress($buffer);
+        $length = strlen($compressed);
+        $this->writeBuffer->clear();
+        $this->writeBuffer->reserve($length + Client::PACKET_LENGTH_SIZE + 1);
+        $this->writeBuffer->setWriteOffset(0);
+        $this->writeBuffer->writeUnsignedIntBE($length + 1);
+        $this->writeBuffer->writeUnsignedByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED);
+        $this->writeBuffer->writeByteArray($compressed);
+        $this->writer->write($this->writeBuffer->toString());
     }
 
     public function close(): void
