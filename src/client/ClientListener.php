@@ -138,7 +138,10 @@ final class ClientListener
         socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO, ["sec" => ClientListener::SOCKET_TIMEOUT_READ_WRITE, "usec" => 0]);
         socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, ["sec" => ClientListener::SOCKET_TIMEOUT_READ_WRITE, "usec" => 0]);
 
-        socket_getpeername($socket, $address, $port);
+        if (@socket_getpeername($socket, $address, $port) === false) {
+            @socket_close($socket);
+            return;
+        }
 
         $this->nextId++;
         $this->clients[$this->nextId] = new Client(
@@ -258,6 +261,6 @@ final class ClientListener
             unset($this->clients[$client->id]);
         }
 
-        socket_close($this->socket);
+        @socket_close($this->socket);
     }
 }
