@@ -144,8 +144,8 @@ final class ClientListener
             ->setEnableActiveMigration(false)
             ->discoverPMTUD(true);
         $this->socket->registerSocket($this->reader, function (): void {
-           $this->write();
            socket_read($this->reader, ClientListener::SOCKET_READER_LENGTH);
+           $this->write();
         });
     }
 
