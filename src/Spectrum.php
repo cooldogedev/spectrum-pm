@@ -51,6 +51,7 @@ require_once "CoreConstants.php";
 final class Spectrum extends PluginBase
 {
     private const PACKET_DECODE = [
+        ProxyPacketIds::CONNECTION_RESPONSE => true,
         ProxyPacketIds::LATENCY => true,
         ProxyPacketIds::TRANSFER => true,
 
@@ -61,14 +62,18 @@ final class Spectrum extends PluginBase
 
         ProtocolInfo::BOSS_EVENT_PACKET => true,
 
+        ProtocolInfo::CHUNK_RADIUS_UPDATED_PACKET => true,
+
         ProtocolInfo::MOB_EFFECT_PACKET => true,
 
+        ProtocolInfo::PLAY_STATUS_PACKET => true,
         ProtocolInfo::PLAYER_LIST_PACKET => true,
 
         ProtocolInfo::REMOVE_ACTOR_PACKET => true,
         ProtocolInfo::REMOVE_OBJECTIVE_PACKET => true,
 
         ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET => true,
+        ProtocolInfo::START_GAME_PACKET => true,
     ];
 
     public readonly ?APIThread $api;
