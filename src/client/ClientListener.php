@@ -150,6 +150,7 @@ final class ClientListener
     public function tick(): void
     {
         $this->socket->selectSockets(ClientListener::SOCKET_SELECT_TIMEOUT);
+        $this->write();
     }
 
     private function write(): void
