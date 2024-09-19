@@ -4,35 +4,31 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "be5a1f7a86091591f4374efd2b06f04b",
+    "content-hash": "f08431cd2ff15f82cafa355a04ed3260",
     "packages": [
         {
-            "name": "ircmaxell/ffime",
-            "version": "dev-master",
+            "name": "cooldogedev/spectral-php",
+            "version": "dev-main",
             "source": {
                 "type": "git",
-                "url": "https://github.com/ircmaxell/FFIMe.git",
-                "reference": "0b7fb71209b192e55a61ec2fb33a932a561dd82a"
+                "url": "https://github.com/cooldogedev/spectral-php.git",
+                "reference": "6bc43278f229f1454f02557e42b48860fa3f52e0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/0b7fb71209b192e55a61ec2fb33a932a561dd82a",
-                "reference": "0b7fb71209b192e55a61ec2fb33a932a561dd82a",
+                "url": "https://api.github.com/repos/cooldogedev/spectral-php/zipball/6bc43278f229f1454f02557e42b48860fa3f52e0",
+                "reference": "6bc43278f229f1454f02557e42b48860fa3f52e0",
                 "shasum": ""
             },
             "require": {
-                "ircmaxell/php-c-parser": "dev-master",
-                "ircmaxell/php-object-symbolresolver": "dev-master",
-                "php": ">=8.0"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^8.0"
+                "ext-encoding": "*",
+                "ext-sockets": "*"
             },
             "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "FFIMe\\": "lib/"
+                    "cooldogedev\\spectral\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -41,177 +37,27 @@
             ],
             "authors": [
                 {
-                    "name": "Anthony Ferrara",
-                    "email": "ircmaxell@gmail.com"
-                },
-                {
-                    "name": "Bob Weinand",
-                    "email": "bobwei9@hotmail.com"
+                    "name": "Doge",
+                    "email": "cooldogedev@gmail.com"
                 }
             ],
-            "description": "Make life easy when working with FFI",
             "support": {
-                "issues": "https://github.com/ircmaxell/FFIMe/issues",
-                "source": "https://github.com/ircmaxell/FFIMe/tree/master"
+                "issues": "https://github.com/cooldogedev/spectral-php/issues",
+                "source": "https://github.com/cooldogedev/spectral-php/tree/main"
             },
-            "time": "2024-01-02T20:37:51+00:00"
-        },
-        {
-            "name": "ircmaxell/php-c-parser",
-            "version": "dev-master",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/ircmaxell/php-c-parser.git",
-                "reference": "365c52d4c28deed279fef35958488b2a7c382b3b"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/php-c-parser/zipball/365c52d4c28deed279fef35958488b2a7c382b3b",
-                "reference": "365c52d4c28deed279fef35958488b2a7c382b3b",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=7.4"
-            },
-            "require-dev": {
-                "ircmaxell/php-yacc": "dev-master",
-                "phpunit/phpunit": "^8.0"
-            },
-            "default-branch": true,
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "PHPCParser\\": "lib/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Anthony Ferrara",
-                    "email": "ircmaxell@gmail.com"
-                },
-                {
-                    "name": "Bob Weinand",
-                    "email": "bobwei9@hotmail.com"
-                }
-            ],
-            "description": "Parse C when using PHP",
-            "support": {
-                "issues": "https://github.com/ircmaxell/php-c-parser/issues",
-                "source": "https://github.com/ircmaxell/php-c-parser/tree/master"
-            },
-            "time": "2023-10-14T16:23:09+00:00"
-        },
-        {
-            "name": "ircmaxell/php-object-symbolresolver",
-            "version": "dev-master",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/ircmaxell/php-object-symbolresolver.git",
-                "reference": "ca63994ee21e0104fdcd1058d22492e697dec4b6"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/php-object-symbolresolver/zipball/ca63994ee21e0104fdcd1058d22492e697dec4b6",
-                "reference": "ca63994ee21e0104fdcd1058d22492e697dec4b6",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=7.4"
-            },
-            "default-branch": true,
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "PHPObjectSymbolResolver\\": "lib/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Anthony Ferrara",
-                    "email": "ircmaxell@gmail.com"
-                },
-                {
-                    "name": "Bob Weinand",
-                    "email": "bobwei9@hotmail.com"
-                },
-                {
-                    "name": "Shane Thompson",
-                    "email": "me@shane.pt"
-                }
-            ],
-            "description": "An object file (ELF, Mach-O, PE) parser",
-            "support": {
-                "issues": "https://github.com/ircmaxell/php-object-symbolresolver/issues",
-                "source": "https://github.com/ircmaxell/php-object-symbolresolver/tree/master"
-            },
-            "time": "2024-05-20T15:05:20+00:00"
-        },
-        {
-            "name": "nethergamesmc/quiche",
-            "version": "dev-master",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/NetherGamesMC/PHP-Quiche.git",
-                "reference": "7833a6da6b94fa4b69de49a4ef04874b194f9ef7"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/NetherGamesMC/PHP-Quiche/zipball/7833a6da6b94fa4b69de49a4ef04874b194f9ef7",
-                "reference": "7833a6da6b94fa4b69de49a4ef04874b194f9ef7",
-                "shasum": ""
-            },
-            "require": {
-                "ext-ffi": "*",
-                "ext-sockets": "*",
-                "ircmaxell/ffime": "dev-master",
-                "php": "^8.2"
-            },
-            "require-dev": {
-                "phpstan/phpstan": "1.10.56",
-                "phpunit/phpunit": "10.5.9"
-            },
-            "default-branch": true,
-            "type": "project",
-            "autoload": {
-                "psr-4": {
-                    "": [
-                        "src"
-                    ]
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "GPL-3.0-or-later"
-            ],
-            "description": "A Quiche-based QUIC implementation for PHP",
-            "support": {
-                "issues": "https://github.com/NetherGamesMC/PHP-Quiche/issues",
-                "source": "https://github.com/NetherGamesMC/PHP-Quiche/tree/1.1.0"
-            },
-            "time": "2024-06-26T19:27:35+00:00"
+            "time": "2024-10-02T14:33:24+00:00"
         }
     ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {
-        "nethergamesmc/quiche": 20
-    },
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "ext-sockets": "*",
         "ext-pmmpthread": "*",
         "ext-snappy": "*",
-        "ext-zlib": "*",
         "ext-encoding": "*"
     },
     "platform-dev": [],

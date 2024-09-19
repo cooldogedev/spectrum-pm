@@ -332,7 +332,7 @@ final class ProxyInterface implements NetworkInterface
     public function sendOutgoingRaw(int $identifier, string $packet, ?int $receiptId): void
     {
         $buffer = Binary::writeInt($identifier) . $packet;
-        $this->thread->out[] = $buffer;
+        $this->out[] = $buffer;
         $this->sentBytes += strlen($buffer);
         @socket_write($this->writer, "\00");
         if ($receiptId !== null && isset($this->sessions[$identifier])) {

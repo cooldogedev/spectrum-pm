@@ -18,8 +18,7 @@
         "ext-sockets": "*",
         "ext-pmmpthread": "*",
         "ext-snappy": "*",
-        "ext-zlib": "*",
-        "nethergamesmc/quiche": "dev-master",
-        "ext-encoding": "*"
+        "ext-encoding": "*",
+        "cooldogedev/spectral-php": "dev-main"
     }
 }
