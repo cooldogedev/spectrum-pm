@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e67f2353e37bc1a68dddf16c10dc543f",
+    "content-hash": "356dffc211c6da9e9918fe1ef61044db",
     "packages": [
         {
             "name": "cooldogedev/spectral-php",
-            "version": "0.0.1",
+            "version": "0.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cooldogedev/spectral-php.git",
-                "reference": "47bd9431165e3bf3ac63d7c8ca80231e9fdb4d77"
+                "reference": "a8b4ed29e74396e60832b3431e055ed770673f96"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cooldogedev/spectral-php/zipball/47bd9431165e3bf3ac63d7c8ca80231e9fdb4d77",
-                "reference": "47bd9431165e3bf3ac63d7c8ca80231e9fdb4d77",
+                "url": "https://api.github.com/repos/cooldogedev/spectral-php/zipball/a8b4ed29e74396e60832b3431e055ed770673f96",
+                "reference": "a8b4ed29e74396e60832b3431e055ed770673f96",
                 "shasum": ""
             },
             "require": {
@@ -42,9 +42,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cooldogedev/spectral-php/issues",
-                "source": "https://github.com/cooldogedev/spectral-php/tree/v0.0.1"
+                "source": "https://github.com/cooldogedev/spectral-php/tree/v0.0.2"
             },
-            "time": "2024-10-03T04:19:42+00:00"
+            "time": "2024-10-03T05:27:20+00:00"
         }
     ],
     "packages-dev": [],
