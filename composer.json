@@ -19,6 +19,6 @@
         "ext-pmmpthread": "*",
         "ext-snappy": "*",
         "ext-encoding": "*",
-        "cooldogedev/spectral-php": "0.0.3"
+        "cooldogedev/spectral-php": "^0.0.5"
     }
 }

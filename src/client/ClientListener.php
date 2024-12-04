@@ -30,7 +30,7 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client;
 
-use cooldogedev\spectral\Address;
+use cooldogedev\spectral\util\Address;
 use cooldogedev\Spectrum\client\packet\DisconnectPacket;
 use cooldogedev\Spectrum\client\packet\LoginPacket;
 use cooldogedev\Spectrum\client\packet\ProxyPacketPool;
@@ -40,29 +40,19 @@ use cooldogedev\spectral\ServerConnection;
 use cooldogedev\spectral\Stream;
 use Exception;
 use pmmp\thread\ThreadSafeArray;
-use pocketmine\network\mcpe\protocol\DataPacket;
-use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use Socket;
-use function strlen;
-use function substr;
-use function snappy_compress;
-use function snappy_uncompress;
+use function socket_read;
 
 final class ClientListener
 {
-    private const PACKET_DECODE_NEEDED = 0x00;
-    private const PACKET_DECODE_NOT_NEEDED = 0x01;
-
     private readonly Listener $listener;
-
-    /**
-     * @phpstan-var array<int, Stream>
-     */
-    private array $streams = [];
-
     private int $nextId = 0;
+    /**
+     * @phpstan-var array<int, Client>
+     */
+    private array $clients = [];
 
     public function __construct(
         private readonly Socket           $reader,
@@ -80,22 +70,13 @@ final class ClientListener
         $streamAcceptor = function (Address $address, Stream $stream): void {
             $identifier = $this->nextId;
             $this->nextId++;
-            $stream->registerCloseHandler(fn () => $this->remove($identifier, true));
-            $stream->registerReader(function (string $data) use ($address, $identifier): void {
-                $payload = @snappy_uncompress(substr($data, 4));
-                if ($payload === false) {
-                    return;
-                }
-
-                $offset = 0;
-                $pid = Binary::readUnsignedVarInt($payload, $offset) & DataPacket::PID_MASK;
-                if ($pid === ProtocolInfo::DISCONNECT_PACKET) {
-                    $this->disconnect($identifier, false);
-                    return;
-                }
-                $this->in[] = Binary::writeInt($identifier) . $payload;
-            });
-            $this->streams[$identifier] = $stream;
+            $stream->registerCloseHandler(fn () => $this->disconnect($identifier, true));
+            $this->clients[$identifier] = new Client(
+                stream: $stream,
+                logger: $this->logger,
+                reader: fn (string $data) => $this->in[] = Binary::writeInt($identifier) . $data,
+                id: $identifier,
+            );
             $this->in[] = ProxySerializer::encode($identifier, LoginPacket::create($address->address, $address->port));
             $this->logger->debug("Accepted client " . $this->nextId . " from " . $address->toString());
         };
@@ -104,7 +85,10 @@ final class ClientListener
             $this->logger->debug("Accepted connection from " . $connection->getRemoteAddress()->toString());
             $connection->setStreamAcceptor(fn (Stream $stream) => $streamAcceptor($connection->getRemoteAddress(), $stream));
         });
-        $this->listener->registerSocketInterruption($this->reader);
+        $this->listener->registerSocket($this->reader, function (): void {
+            @socket_read($this->reader, 65535);
+            $this->write();
+        });
     }
 
     public function tick(): void
@@ -117,8 +101,8 @@ final class ClientListener
     {
         while (($out = $this->out->shift()) !== null) {
             [$identifier, $buffer] = ProxySerializer::decodeRaw($out);
-            $stream = $this->streams[$identifier] ?? null;
-            if ($stream === null) {
+            $client = $this->clients[$identifier] ?? null;
+            if ($client === null) {
                 continue;
             }
 
@@ -128,16 +112,8 @@ final class ClientListener
                 continue;
             }
 
-            $decodeNeeded = $this->decode[$packet->pid()] ?? false;
             try {
-                $compressed = @snappy_compress($buffer);
-                if ($compressed !== false) {
-                    $stream->write(
-                        Binary::writeInt(strlen($compressed) + 1) .
-                        Binary::writeByte(($decodeNeeded ? ClientListener::PACKET_DECODE_NEEDED : ClientListener::PACKET_DECODE_NOT_NEEDED)) .
-                        $compressed
-                    );
-                }
+                $client->write($buffer, $this->decode[$packet->pid()] ?? false);
             } catch (Exception $exception) {
                 $this->disconnect($identifier, true);
                 $this->logger->logException($exception);
@@ -145,33 +121,25 @@ final class ClientListener
         }
     }
 
-    private function disconnect(int $streamId, bool $notifyMain): void
+    private function disconnect(int $clientId, bool $notifyMain): void
     {
-        $stream = $this->streams[$streamId] ?? null;
-        if ($stream === null) {
-            return;
-        }
-        $stream->close();
-        $this->remove($streamId, $notifyMain);
-    }
-
-    private function remove(int $streamId, bool $notifyMain): void
-    {
-        if (!isset($this->streams[$streamId])) {
+        $client = $this->clients[$clientId] ?? null;
+        if ($client === null) {
             return;
         }
 
         if ($notifyMain) {
-            $this->in[] = ProxySerializer::encode($streamId, DisconnectPacket::create());
+            $this->in[] = ProxySerializer::encode($client->id, DisconnectPacket::create());
         }
-        unset($this->streams[$streamId]);
+        $client->close();
+        unset($this->clients[$client->id]);
     }
 
     public function close(): void
     {
-        foreach ($this->streams as $id => $stream) {
-            $stream->close();
-            unset($this->streams[$id]);
+        foreach ($this->clients as $client) {
+            $client->close();
+            unset($this->clients[$client->id]);
         }
         $this->listener->close();
     }
