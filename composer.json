@@ -2,6 +2,7 @@
     "name": "cooldogedev/spectrum",
     "type": "project",
     "license": "MIT",
+    "version": "0.0.14",
     "autoload": {
         "psr-4": {
             "cooldogedev\\Spectrum\\": "src/"
