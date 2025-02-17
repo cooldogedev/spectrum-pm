@@ -64,6 +64,8 @@ final class Spectrum extends PluginBase
 
         ProtocolInfo::CHUNK_RADIUS_UPDATED_PACKET => true,
 
+        ProtocolInfo::ITEM_REGISTRY_PACKET => true,
+
         ProtocolInfo::MOB_EFFECT_PACKET => true,
 
         ProtocolInfo::PLAY_STATUS_PACKET => true,

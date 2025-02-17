@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "818753f24d2f53f9a7667a3133d904fe",
+    "content-hash": "7797e84e73e30bf1b1f45d857537c6fc",
     "packages": [
         {
             "name": "cooldogedev/spectral-php",
-            "version": "0.0.5",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cooldogedev/spectral-php.git",
-                "reference": "a5b2bf1583bfcc574613fe93fbde82e9e7d5e995"
+                "reference": "b29ca496473576fdcab3275ab92cdc367f15e8bc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cooldogedev/spectral-php/zipball/a5b2bf1583bfcc574613fe93fbde82e9e7d5e995",
-                "reference": "a5b2bf1583bfcc574613fe93fbde82e9e7d5e995",
+                "url": "https://api.github.com/repos/cooldogedev/spectral-php/zipball/b29ca496473576fdcab3275ab92cdc367f15e8bc",
+                "reference": "b29ca496473576fdcab3275ab92cdc367f15e8bc",
                 "shasum": ""
             },
             "require": {
@@ -25,6 +25,7 @@
                 "ext-sockets": "*",
                 "symfony/filesystem": "^7.1"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -199,15 +200,16 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-mbstring.git",
-                "reference": "2369cb908b33d7b7518cce042615de430142497f"
+                "reference": "6d857f4d76bd4b343eac26d6b539585d2bc56493"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/2369cb908b33d7b7518cce042615de430142497f",
-                "reference": "2369cb908b33d7b7518cce042615de430142497f",
+                "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/6d857f4d76bd4b343eac26d6b539585d2bc56493",
+                "reference": "6d857f4d76bd4b343eac26d6b539585d2bc56493",
                 "shasum": ""
             },
             "require": {
+                "ext-iconv": "*",
                 "php": ">=7.2"
             },
             "provide": {
@@ -272,13 +274,15 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-09-10T14:38:51+00:00"
+            "time": "2024-12-23T08:48:59+00:00"
         }
     ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": [],
+    "stability-flags": {
+        "cooldogedev/spectral-php": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
