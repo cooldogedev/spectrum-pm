@@ -40,8 +40,10 @@ use cooldogedev\spectral\ServerConnection;
 use cooldogedev\spectral\Stream;
 use Exception;
 use pmmp\thread\ThreadSafeArray;
+use pocketmine\network\mcpe\raklib\PthreadsChannelReader;
+use pocketmine\network\mcpe\raklib\SnoozeAwarePthreadsChannelWriter;
+use pocketmine\snooze\SleeperHandlerEntry;
 use pocketmine\thread\log\ThreadSafeLogger;
-use pocketmine\utils\Binary;
 use Socket;
 use function socket_read;
 
@@ -54,16 +56,22 @@ final class ClientListener
      */
     private array $clients = [];
 
+    private readonly PthreadsChannelReader $mainToThread;
+    private readonly SnoozeAwarePthreadsChannelWriter $threadToMain;
+
     public function __construct(
-        private readonly Socket           $reader,
-        private readonly ThreadSafeArray  $decode,
-        private readonly ThreadSafeLogger $logger,
+        private readonly SleeperHandlerEntry $sleeperHandlerEntry,
+        private readonly Socket              $notificationSocket,
+        private readonly ThreadSafeLogger    $logger,
 
-        private ThreadSafeArray           $in,
-        private ThreadSafeArray           $out,
+        private readonly int                 $port,
 
-        private readonly int              $port,
-    ) {}
+        ThreadSafeArray                      $mainToThread,
+        ThreadSafeArray                      $threadToMain,
+    ) {
+        $this->mainToThread = new PthreadsChannelReader($mainToThread);
+        $this->threadToMain = new SnoozeAwarePthreadsChannelWriter($threadToMain, $this->sleeperHandlerEntry->createNotifier());
+    }
 
     public function start(): void
     {
@@ -74,10 +82,10 @@ final class ClientListener
             $this->clients[$identifier] = new Client(
                 stream: $stream,
                 logger: $this->logger,
-                reader: fn (string $data) => $this->in[] = Binary::writeInt($identifier) . $data,
+                writer: $this->threadToMain,
                 id: $identifier,
             );
-            $this->in[] = ProxySerializer::encode($identifier, LoginPacket::create($address->address, $address->port));
+            $this->threadToMain->write(ProxySerializer::encode($identifier, LoginPacket::create($address->address, $address->port)));
             $this->logger->debug("Accepted client " . $this->nextId . " from " . $address->toString());
         };
         $this->listener = Listener::listen("0.0.0.0", $this->port);
@@ -85,8 +93,8 @@ final class ClientListener
             $this->logger->debug("Accepted connection from " . $connection->getRemoteAddress()->toString());
             $connection->setStreamAcceptor(fn (Stream $stream) => $streamAcceptor($connection->getRemoteAddress(), $stream));
         });
-        $this->listener->registerSocket($this->reader, function (): void {
-            @socket_read($this->reader, 65535);
+        $this->listener->registerSocket($this->notificationSocket, function (): void {
+            @socket_read($this->notificationSocket, 65535);
             $this->write();
         });
     }
@@ -94,13 +102,12 @@ final class ClientListener
     public function tick(): void
     {
         $this->listener->tick();
-        $this->write();
     }
 
     private function write(): void
     {
-        while (($out = $this->out->shift()) !== null) {
-            [$identifier, $buffer] = ProxySerializer::decodeRaw($out);
+        while (($out = $this->mainToThread->read()) !== null) {
+            [$identifier, $decodeNeeded, $buffer] = ProxySerializer::decodeRawWithDecodeNecessity($out);
             $client = $this->clients[$identifier] ?? null;
             if ($client === null) {
                 continue;
@@ -113,7 +120,7 @@ final class ClientListener
             }
 
             try {
-                $client->write($buffer, $this->decode[$packet->pid()] ?? false);
+                $client->write($buffer, $decodeNeeded);
             } catch (Exception $exception) {
                 $this->disconnect($identifier, true);
                 $this->logger->logException($exception);
@@ -129,7 +136,7 @@ final class ClientListener
         }
 
         if ($notifyMain) {
-            $this->in[] = ProxySerializer::encode($client->id, DisconnectPacket::create());
+            $this->threadToMain->write(ProxySerializer::encode($client->id, DisconnectPacket::create()));
         }
         $client->close();
         unset($this->clients[$client->id]);

@@ -51,4 +51,12 @@ final class ProxySerializer
     {
         return [Binary::readInt(substr($buffer, 0, 4)), substr($buffer, 4)];
     }
+
+    /**
+     * @return array{0: int, 1: bool, 2: string}
+     */
+    public static function decodeRawWithDecodeNecessity(string $buffer): array
+    {
+        return [Binary::readInt(substr($buffer, 0, 4)), Binary::readBool(substr($buffer, 4, 1)), substr($buffer, 5)];
+    }
 }

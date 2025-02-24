@@ -35,7 +35,6 @@ use cooldogedev\Spectrum\api\APIThread;
 use cooldogedev\Spectrum\client\packet\ProxyPacketIds;
 use cooldogedev\Spectrum\network\ProxyInterface;
 use cooldogedev\Spectrum\util\ComposerRegisterAsyncTask;
-use pmmp\thread\ThreadSafeArray;
 use pocketmine\event\EventPriority;
 use pocketmine\event\server\NetworkInterfaceRegisterEvent;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
@@ -50,43 +49,40 @@ require_once "CoreConstants.php";
 
 final class Spectrum extends PluginBase
 {
-    private const PACKET_DECODE = [
-        ProxyPacketIds::CONNECTION_RESPONSE => true,
-        ProxyPacketIds::LATENCY => true,
-        ProxyPacketIds::TRANSFER => true,
+    private array $decode = [
+		ProxyPacketIds::CONNECTION_RESPONSE => true,
+		ProxyPacketIds::LATENCY => true,
+		ProxyPacketIds::TRANSFER => true,
 
-        ProtocolInfo::ADD_ACTOR_PACKET => true,
-        ProtocolInfo::ADD_ITEM_ACTOR_PACKET => true,
-        ProtocolInfo::ADD_PAINTING_PACKET => true,
-        ProtocolInfo::ADD_PLAYER_PACKET => true,
+		ProtocolInfo::ADD_ACTOR_PACKET => true,
+		ProtocolInfo::ADD_ITEM_ACTOR_PACKET => true,
+		ProtocolInfo::ADD_PAINTING_PACKET => true,
+		ProtocolInfo::ADD_PLAYER_PACKET => true,
 
-        ProtocolInfo::BOSS_EVENT_PACKET => true,
+		ProtocolInfo::BOSS_EVENT_PACKET => true,
 
-        ProtocolInfo::CHUNK_RADIUS_UPDATED_PACKET => true,
+		ProtocolInfo::CHUNK_RADIUS_UPDATED_PACKET => true,
 
-        ProtocolInfo::ITEM_REGISTRY_PACKET => true,
+		ProtocolInfo::ITEM_REGISTRY_PACKET => true,
 
-        ProtocolInfo::MOB_EFFECT_PACKET => true,
+		ProtocolInfo::MOB_EFFECT_PACKET => true,
 
-        ProtocolInfo::PLAY_STATUS_PACKET => true,
-        ProtocolInfo::PLAYER_LIST_PACKET => true,
+		ProtocolInfo::PLAY_STATUS_PACKET => true,
+		ProtocolInfo::PLAYER_LIST_PACKET => true,
 
-        ProtocolInfo::REMOVE_ACTOR_PACKET => true,
-        ProtocolInfo::REMOVE_OBJECTIVE_PACKET => true,
+		ProtocolInfo::REMOVE_ACTOR_PACKET => true,
+		ProtocolInfo::REMOVE_OBJECTIVE_PACKET => true,
 
-        ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET => true,
-        ProtocolInfo::START_GAME_PACKET => true,
-    ];
-
-    public readonly ?APIThread $api;
-
-    /**
-     * @var Closure(AuthenticationData $authenticationData, string $token):bool | null
-     */
-    public ?Closure $authenticator;
-    public ThreadSafeArray $decode;
+		ProtocolInfo::SET_DISPLAY_OBJECTIVE_PACKET => true,
+		ProtocolInfo::START_GAME_PACKET => true,
+	];
 
     public readonly ProxyInterface $interface;
+	public readonly ?APIThread $api;
+	/**
+	 * @var Closure(AuthenticationData $authenticationData, string $token):bool | null
+	 */
+	public ?Closure $authenticator;
 
     protected function onLoad(): void
     {
@@ -118,14 +114,8 @@ final class Spectrum extends PluginBase
             $this->api = null;
         }
 
-        $this->authenticator = fn (AuthenticationData $authenticationData, string $token): bool => $token === $this->getConfig()->get("secret");
-        $this->decode = new ThreadSafeArray();
-        $this->interface = new ProxyInterface($this, $this->decode);
-
-        foreach (Spectrum::PACKET_DECODE as $id => $bool) {
-            $this->decode[$id] = $bool;
-        }
-
+		$this->authenticator = fn (AuthenticationData $authenticationData, string $token): bool => $token === $this->getConfig()->get("secret");
+		$this->interface = new ProxyInterface($this, $this->decode);
         $server = $this->getServer();
         $server->getNetwork()->registerInterface($this->interface);
         if ($this->getConfig()->get("disable-raklib")) {
@@ -142,4 +132,9 @@ final class Spectrum extends PluginBase
             );
         }
     }
+
+	public function registerPacketDecode(int $packetID, bool $value): void
+	{
+		$this->decode[$packetID] = $value;
+	}
 }

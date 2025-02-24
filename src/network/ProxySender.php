@@ -60,6 +60,6 @@ final class ProxySender implements PacketSender
         }
 
         $this->closed = true;
-        $this->interface->disconnect($this->identifier, true);
+        $this->interface->disconnect($this->identifier, true, $reason);
     }
 }

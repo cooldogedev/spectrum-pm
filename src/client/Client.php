@@ -30,85 +30,80 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client;
 
-use Closure;
 use cooldogedev\spectral\Stream;
-use pmmp\encoding\ByteBuffer;
+use pocketmine\network\mcpe\raklib\SnoozeAwarePthreadsChannelWriter;
 use pocketmine\thread\log\ThreadSafeLogger;
+use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryDataException;
 use function snappy_compress;
 use function snappy_uncompress;
 use function strlen;
+use function substr;
 
 final class Client
 {
-    private const PACKET_LENGTH_SIZE = 4;
+    private const int PACKET_LENGTH_SIZE = 4;
 
-    private const PACKET_DECODE_NEEDED = 0x00;
-    private const PACKET_DECODE_NOT_NEEDED = 0x01;
+    private const int PACKET_DECODE_NEEDED = 0x00;
+    private const int PACKET_DECODE_NOT_NEEDED = 0x01;
 
-    private readonly ByteBuffer $buffer;
-    private readonly ByteBuffer $writeBuffer;
+    private string $buffer = "";
 
     private int $length = 0;
     private bool $closed = false;
 
     public function __construct(
-        public readonly Stream                    $stream,
-        public readonly ThreadSafeLogger          $logger,
-        public readonly Closure                   $reader,
-        public readonly int                       $id,
+        public readonly Stream                           $stream,
+        public readonly ThreadSafeLogger                 $logger,
+        public readonly SnoozeAwarePthreadsChannelWriter $writer,
+        public readonly int                              $id,
     ) {
-        $this->buffer = new ByteBuffer();
-        $this->writeBuffer = new ByteBuffer();
         $this->stream->registerReader(function (string $data): void {
-            $this->buffer->writeByteArray($data);
+            $this->buffer .= $data;
             $this->read();
         });
     }
 
     public function read(): void
     {
-        if ($this->length === 0 && $this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
+		if ($this->closed) {
+			return;
+		}
+
+        if ($this->length === 0 && strlen($this->buffer) >= Client::PACKET_LENGTH_SIZE) {
             try {
-                $length = $this->buffer->readUnsignedIntBE();
+                $length = Binary::readInt($this->buffer);
             } catch (BinaryDataException) {
                 return;
             }
             $this->length = $length;
-            $this->buffer->reserve($length);
+            $this->buffer = substr($this->buffer, Client::PACKET_LENGTH_SIZE);
         }
 
-        if ($this->length === 0 || $this->length > $this->buffer->getUsedLength() - $this->buffer->getReadOffset()) {
+        if ($this->length === 0 || $this->length > strlen($this->buffer)) {
             return;
         }
 
-        $payload = @snappy_uncompress($this->buffer->readByteArray($this->length));
+        $payload = @snappy_uncompress(substr($this->buffer, 0, $this->length));
         if ($payload !== false) {
-            ($this->reader)($payload);
+            $this->writer->write(Binary::writeInt($this->id) . $payload);
         }
 
-        $remaining = $this->buffer->readByteArray($this->buffer->getUsedLength() - $this->buffer->getReadOffset());
-        $this->buffer->clear();
-        $this->buffer->setReadOffset(0);
-        $this->buffer->setWriteOffset(0);
-        $this->buffer->writeByteArray($remaining);
+		$this->buffer = substr($this->buffer, $this->length);
         $this->length = 0;
-        if ($this->buffer->getUsedLength() >= Client::PACKET_LENGTH_SIZE) {
-            $this->read();
-        }
+		if (strlen($this->buffer) >= Client::PACKET_LENGTH_SIZE) {
+			$this->read();
+		}
     }
 
     public function write(string $buffer, bool $decodeNeeded): void
     {
         $compressed = @snappy_compress($buffer);
-        $length = strlen($compressed);
-        $this->writeBuffer->clear();
-        $this->writeBuffer->reserve($length + Client::PACKET_LENGTH_SIZE + 1);
-        $this->writeBuffer->setWriteOffset(0);
-        $this->writeBuffer->writeUnsignedIntBE($length + 1);
-        $this->writeBuffer->writeUnsignedByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED);
-        $this->writeBuffer->writeByteArray($compressed);
-        $this->stream->write($this->writeBuffer->toString());
+        $this->stream->write(
+            Binary::writeInt(strlen($compressed) + 1) .
+            Binary::writeByte($decodeNeeded ? Client::PACKET_DECODE_NEEDED : Client::PACKET_DECODE_NOT_NEEDED) .
+            $compressed
+        );
     }
 
     public function close(): void
@@ -117,6 +112,7 @@ final class Client
             return;
         }
         $this->closed = true;
+		$this->buffer = "";
         $this->stream->close();
         $this->logger->debug("Closed client " . $this->id);
     }
