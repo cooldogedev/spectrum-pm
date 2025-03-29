@@ -30,14 +30,18 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\client\packet;
 
-interface ProxyPacketIds
-{
-    public const CONNECTION_REQUEST = 500;
-    public const CONNECTION_RESPONSE = 501;
-    public const FLUSH = 502;
-    public const LATENCY = 503;
-    public const TRANSFER = 504;
+use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 
-    public const LOGIN = 505;
-    public const DISCONNECT = 506;
+final class FlushPacket extends ProxyPacket
+{
+    public const NETWORK_ID = ProxyPacketIds::FLUSH;
+
+    public static function create(): FlushPacket
+    {
+        return new FlushPacket();
+    }
+
+    protected function decodePayload(PacketSerializer $in): void {}
+
+    protected function encodePayload(PacketSerializer $out): void {}
 }

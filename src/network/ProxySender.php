@@ -30,6 +30,7 @@ declare(strict_types=1);
 
 namespace cooldogedev\Spectrum\network;
 
+use cooldogedev\Spectrum\client\packet\FlushPacket;
 use pocketmine\network\mcpe\PacketSender;
 use pocketmine\network\mcpe\protocol\serializer\PacketBatch;
 use pocketmine\utils\BinaryStream;
@@ -49,8 +50,9 @@ final class ProxySender implements PacketSender
 
         $stream = new BinaryStream(substr($payload, 1));
         foreach (PacketBatch::decodeRaw($stream) as $packet) {
-            $this->interface->sendOutgoingRaw($this->identifier, $packet, $receiptId);
+            $this->interface->sendOutgoingRaw($this->identifier, $packet, null);
         }
+        $this->interface->sendOutgoing($this->identifier, FlushPacket::create(), $receiptId);
     }
 
     public function close(string $reason = "unknown reason"): void

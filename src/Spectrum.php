@@ -52,6 +52,7 @@ final class Spectrum extends PluginBase
 {
     private array $decode = [
 		ProxyPacketIds::CONNECTION_RESPONSE => true,
+		ProxyPacketIds::FLUSH => true,
 		ProxyPacketIds::LATENCY => true,
 		ProxyPacketIds::TRANSFER => true,
 

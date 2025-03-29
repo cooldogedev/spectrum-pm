@@ -44,10 +44,11 @@ final class ProxyPacketPool extends PMPacketPool
 
         $this->registerPacket(new ConnectionRequestPacket());
         $this->registerPacket(new ConnectionResponsePacket());
-        $this->registerPacket(new DisconnectPacket());
+        $this->registerPacket(new FlushPacket());
         $this->registerPacket(new LatencyPacket());
-        $this->registerPacket(new LoginPacket());
         $this->registerPacket(new TransferPacket());
+        $this->registerPacket(new DisconnectPacket());
+        $this->registerPacket(new LoginPacket());
     }
 
     public static function getInstance(): ProxyPacketPool
