@@ -41,20 +41,20 @@ final class ConnectionRequestPacket extends ProxyPacket
 
     public string $address;
 
-    public int $protocolID;
-
     public array $clientData;
     public array $identityData;
 
+    public int $protocolID;
+
     public string $cache;
 
-    public static function create(string $address, int $protocolID, array $clientData, array $identityData, string $cache): ConnectionRequestPacket
+    public static function create(string $address, array $clientData, array $identityData, int $protocolID, string $cache): ConnectionRequestPacket
     {
         $packet = new ConnectionRequestPacket();
         $packet->address = $address;
-        $packet->protocolID = $protocolID;
         $packet->clientData = $clientData;
         $packet->identityData = $identityData;
+        $packet->protocolID = $protocolID;
         $packet->cache = $cache;
         return $packet;
     }
@@ -62,18 +62,18 @@ final class ConnectionRequestPacket extends ProxyPacket
     public function decodePayload(PacketSerializer $in): void
     {
         $this->address = $in->getString();
-        $this->protocolID = $in->getLInt();
         $this->clientData = json_decode($in->getString(), true, JSON_INVALID_UTF8_IGNORE);
         $this->identityData = json_decode($in->getString(), true, JSON_INVALID_UTF8_IGNORE);
+        $this->protocolID = $in->getLInt();
         $this->cache = $in->getString();
     }
 
     public function encodePayload(PacketSerializer $out): void
     {
         $out->putString($this->address);
-        $out->putLInt($this->protocolID);
         $out->putString(json_encode($this->clientData, JSON_INVALID_UTF8_IGNORE));
         $out->putString(json_encode($this->identityData, JSON_INVALID_UTF8_IGNORE));
+        $out->putLInt($this->protocolID);
         $out->putString($this->cache);
     }
 }
