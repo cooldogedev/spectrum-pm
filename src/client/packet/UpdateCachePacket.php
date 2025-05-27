@@ -39,9 +39,9 @@ final class UpdateCachePacket extends ProxyPacket implements ClientboundPacket
 
 	public string $cache;
 
-	public static function create(string $cache): ConnectionRequestPacket
+	public static function create(string $cache): UpdateCachePacket
 	{
-		$packet = new ConnectionRequestPacket();
+		$packet = new UpdateCachePacket();
 		$packet->cache = $cache;
 		return $packet;
 	}
