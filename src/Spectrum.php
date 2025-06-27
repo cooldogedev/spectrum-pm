@@ -55,6 +55,7 @@ final class Spectrum extends PluginBase
 		ProxyPacketIds::FLUSH => true,
 		ProxyPacketIds::LATENCY => true,
 		ProxyPacketIds::TRANSFER => true,
+		ProxyPacketIds::UPDATE_CACHE => true,
 
 		ProtocolInfo::ADD_ACTOR_PACKET => true,
 		ProtocolInfo::ADD_ITEM_ACTOR_PACKET => true,
