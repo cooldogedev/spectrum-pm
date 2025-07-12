@@ -301,9 +301,13 @@ final class ProxyInterface implements NetworkInterface
             return;
         }
 
+		$xuid = $session->getPlayerInfo()?->getXuid();
+		if ($xuid !== null) {
+			$this->plugin->deleteCache($xuid);
+		}
+
         unset($this->sessions[$identifier]);
         $session->onClientDisconnect($reason);
-        $this->plugin->deleteCache($session->getPlayerInfo()->getXuid());
         if ($notifyThread) {
             $this->sendOutgoing($identifier, DisconnectPacket::create(), null);
         }
